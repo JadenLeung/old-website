@@ -7,6 +7,7 @@ var msecs = 0;
 var arr = []
 var oldscore = 0;
 var random = 1;
+
 function jump() {
   arrow.classList.add("jump");
 
@@ -82,7 +83,7 @@ let isAlive = setInterval(function () {
       grade = "F-"
     }
     document.getElementById("Grade").innerHTML = "Your final grade is: " + grade;
-	document.getElementById("block").style.backgroundColor = "White";
+	document.getElementById("block").style.backgroundColor = "#c9ffda";
   }
 }, 10);
 document.addEventListener("keydown", function (event) {

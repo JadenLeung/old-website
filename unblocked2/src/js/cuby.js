@@ -74,8 +74,8 @@ export default class Cuby {
       this.right = this.colors.green;
       this.back = this.colors.red;
     }
-    if ([6, "2x2x4", "3x3x5", "3x3x4", "1x4x4", "2x3x4"].includes(size) ||
-        ["3x2x4", "4x3x3", "1x3x2"].includes(this.special[6])) { // rainbow
+    if ([6, "2x2x4", "3x3x5", "3x3x4", "1x4x4", "2x3x4", "1x5x5", "4x4plus", "1x2x2", "pluslite"].includes(size) ||
+        ["3x2x4", "4x3x3", "1x3x2", "5x3x3", "2x2x4"].includes(this.special[6])) { // rainbow
       this.back = this.c[this.custom[0][3]];
       this.front = this.c[this.custom[5][2]];
       this.bottom = this.c[this.custom[0][1]];
@@ -162,7 +162,7 @@ export default class Cuby {
           })
         }
     }
-    if([13, "lasagna"].includes(size)){
+    if([13, "lasagna", "sandwich2x2"].includes(size)){
       let a = "";
       let c1 = this.custom[4][5];
       let c2 = opposite[c1];
@@ -523,14 +523,24 @@ export default class Cuby {
     let arr = [];
     if(Array.isArray(this.cubysize) && this.cubysize[0] != "adding")
     {
-      arr = this.cubysize[6];
+      for (let i = 0; i < this.cubysize[6].length; i++) {
+        let toadd = this.cubysize[6][i];
+        if (this.special[6] == 100) {
+          toadd = {0 : 0, 1 : 2, 2 : 6, 3 : 8, 4 : 18, 5: 20, 6: 24, 7: 26}[toadd];
+        }
+        arr[i] = toadd;
+      }
     }
-    else if(this.cubysize == 100 || this.cubysize == 5 || this.cubysize == 10)
-      arr = [1, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 25];
+
+    if(this.cubysize == 100 || this.cubysize == 5 || this.cubysize == 10 || this.special[6] == 100)
+      arr.push(1, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 25);
     else if(this.cubysize == 1)
       arr = [0,1,2,3,4,5,6,7,8,18,19,20,21,22,23,24,25,26];
-    else if(this.cubysize == 2 || this.special[6] == 2)
+    else if(this.cubysize == 2 || this.special[6] == 2) {
       arr = [9,10,11,12,13,14,15,16,17];
+      if (this.cubysize == "plus3x3x2")
+        arr.push(0, 2, 6, 8, 18, 20, 24, 26);
+    }
     else if(this.cubysize == 3)
       arr = [0,2,6,8,18,20,24,26];
     else if(this.cubysize == 6)
@@ -548,7 +558,18 @@ export default class Cuby {
           }
         }
       }
-    } else if(["3x2x4", "1x3x2"].includes(this.special[6])) {
+    } else if (this.cubysize == "4x4plus" || this.cubysize == "pluslite") {
+      arr = [];
+      for (let x = 0; x < SIZE; x++) {
+        for (let y = 0; y < SIZE; y++) {
+          for (let z = 0; z < SIZE; z++) {
+            if (+(x % (SIZE - 1) == 0 )+ +(y % (SIZE - 1) == 0) + +(z % (SIZE - 1) == 0) > 1 ) {
+              arr.push(x * SIZE * SIZE + y * SIZE + z);
+            }
+          }
+        }
+      }
+    } else if(["3x2x4", "1x3x2", "5x3x3", "1x5x5", "1x2x2"].includes(this.special[6])) {
       arr = [];
       for (let x = 0; x < SIZE; x++) {
         for (let y = 0; y < SIZE; y++) {
@@ -567,9 +588,9 @@ export default class Cuby {
           }
         }
       }
-    }  else if(["2x2x4", "3x3x5"].includes(this.cubysize) || this.special[6] == "4x3x3") {
+    }  else if(["4x3x3", "2x2x4"].includes(this.special[6])) {
       arr = [0,1,2,3,4,7,8,11,12,13,14,15];
-      if (["3x3x5"].includes(this.cubysize) || this.special[6] == "4x3x3") arr = [0,1,2,3,4,5,9,10,14,15,19,20,21,22,23,24];
+      if (this.special[6] == "4x3x3") arr = [0,1,2,3,4,5,9,10,14,15,19,20,21,22,23,24];
       let s = arr.length;
       for (let i = 1; i < SIZE; i++) {
         for (let j = 0; j < s; j++) {
@@ -588,7 +609,7 @@ export default class Cuby {
       this.shown = true;
     }
     let r = 25;
-    if(this.cubysize == 100 || this.cubysize == 5 || this.cubysize == 10 || this.cubysize[7] == 2)
+    if(this.cubysize == 100 || this.cubysize == 5 || this.cubysize == 10 || this.cubysize[7] == 2 || this.special[6] == 100)
       r = 50;
 
       if (!this.special[0]) r -= this.special[3] * (r/25);
@@ -642,7 +663,7 @@ export default class Cuby {
   }
   
 
-  if ([2, 15, "4x3x3", "1x4x4", "3x2x4", "1x3x2"].includes(this.special[6]) && this.cubysize[0] != "adding") {
+  if ([2, 15, "4x3x3", "1x4x4", "3x2x4", "1x3x2", "1x5x5", "1x2x2"].includes(this.special[6]) && this.cubysize[0] != "adding") {
     let c1 = this.custom[4][5];
     let c2 = this.custom[22][4];
     let c3 = this.custom[14][2];

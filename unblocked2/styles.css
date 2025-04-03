@@ -94,11 +94,11 @@ button:hover {
     top: 0;
     left: 1%;
     width: 99%;
-    height: 98.5%;
+    height: 99%;
     background-color: white;
     z-index: 1; /* Ensure it's on top of the container's content */
     opacity: 1; /* Adjust transparency if needed */
-  }
+}
 .fadetext {
     position: absolute;
     top: 15%;
@@ -110,21 +110,114 @@ button:hover {
     opacity: 0; /* Start fully opaque */
     transition: opacity 0.4s ease-out; /* 1-second fade-out effect */
 }
+#chat-container {
+    height: 65vh; /* Chat box takes 80% of screen height */
+    border: 2px solid #333;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: white;
+}
+#chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: white; /* White background */
+}
+#hotkeycontainer {
+    height: 80vh; /* Adjust the height as needed */
+    overflow-y: auto; /* Enables vertical scrolling */
+}
+.message {
+    background: #d1e7ff;
+    padding: 5px 10px;
+    margin: 5px;
+    border-radius: 5px;
+    width: fit-content;
+    max-width: 80%;
+}
+#chat-input {
+    display: flex;
+    border-top: 2px solid #333;
+    padding: 2px;
+    background: #fff;
+}
+#allmessages {
+    word-wrap: break-word; /* Ensure long words wrap */
+    overflow-wrap: break-word; /* Modern alternative for word wrapping */
+    white-space: pre-wrap; /* Preserve new lines and wrap text */
+    color: #0b196f;
+}
+#chat-messages {
+    user-select: text;
+}
+
+#message-input {
+    flex-grow: 1;
+    padding: 5px;
+}
+.autoscrollable-wrapper {
+    overflow: auto;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+}
+#public_room_container {
+    height: 43vh; /* Fixed height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    display: flex;
+    flex-direction: column; /* Keeps latest content at the bottom */
+}
 #outertime {
         position: absolute;
         top: 9%;
         left: 5%;
         font-family: 'Orbitron';
         font-size: 30px;
-    }
-    #outermoves {
-        position: absolute;
-        top: 9%;
-        right: 1%;
-        font-family: 'Orbitron';
-        font-size: 30px;
-        text-align: right;
-    }
+}
+#peek_container {
+    position: absolute;
+    top: 9%;
+    right: 1%;
+    font-size: 30px;
+    text-align: right;
+    z-index:2;
+}
+#practice_container {
+    position: absolute;
+    top: 9%;
+    right: 1%;
+    font-size: 30px;
+    text-align: right;
+    z-index:2;
+}
+
+
+#compete_advanced {
+    display: inline-flex;
+    align-items: center;
+}
+#compete_inspection {
+    display: inline-flex;
+    align-items: center;
+}
+#outermoves {
+    position: absolute;
+    top: 9%;
+    right: 1%;
+    font-family: 'Orbitron';
+    font-size: 30px;
+    text-align: right;
+}
+#compete_group_container {
+    position: absolute;
+    top: 9%;
+    right: 1%;
+    font-size: 30px;
+    text-align: right;
+    z-index: 2;
+}
 #switcher {
     position: absolute;
     top: 3%;
@@ -205,6 +298,9 @@ button:hover {
     }
     .allcubes {
         display: inline-block;
+    }
+    #chat-container {
+        height: 20vh; /* Chat box takes 80% of screen height */
     }
 }
 @media screen and (max-width: 767px) {

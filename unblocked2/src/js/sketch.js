@@ -4,34 +4,58 @@ import Cuby from './cuby.js';
 import {weeklyscrambles} from '../data/weekly.js'
 import {patterndata} from '../data/pattern.js'
 import { getMove } from '../data/notation.js';
+import {DIMS_OBJ} from '../data/dims.js';
 import {modeData, getUsers, printUsers, putUsers, matchPassword} from "./backend.js";
-const socket = io("https://giraffe-bfa2c4acdpa4ahbr.canadacentral-01.azurewebsites.net/");
-// const socket = io("http://localhost:3000");
+// const socket = io("https://giraffe-bfa2c4acdpa4ahbr.canadacentral-01.azurewebsites.net/");
+// const socket = io("http://localhost:3003");
+const socket = io("https://api.virtual-cube.net:3003/");
+// const socket = io("wss://api.virtual-cube.net:3003/");
 //Thanks to Antoine Gaubert https://github.com/angauber/p5-js-rubik-s-cube
 export default function (p) {
 	const CUBYESIZE = 50;
 	const DEBUG = false;
-	let week = sinceNov3('w') % weeklyscrambles.length;
+	let week = sinceNov3('w') % 20;
 	let bruh = 0;
 	let CAM;
 	let CAM_PICKER;
 	let CAMZOOM = -170;
 	let alldown;
 	let PICKER;
+	let botestimate;
+	let juststarted = false;
+	let raceid = "";
+	let previouschatid = "";
+	let competeshuffle = "";
 	let room = 0;
-	let compete_type = "1v1";
+	let competesel_buttons = [];
+	let competedim_buttons = [];
+	let compete_modnum = 0;
+	let saveshapemod = [];
+	let compete_cube = "";
+	let compete_type = "";
+	let compete_dims = [];
+	let compete_shufflearr = [];
 	let compete_alltimes = [];
 	let fullscreen = false;
+	const speeddata = {
+		0:0.28, 25: 0.25, 50:0.2, 75:0.16677, 100:0.116, 125:0.083, 150:0.033, 175:0.016667, 200:0.016667, 225: 0.016667
+	};
 	let CUBE = {};
 	const DNF = 99999999
 	let DIM = 50; //50 means 3x3, 100 means 2x2
 	let DIM2 = 50;
 	let DIM3 = 3;
 	let DIM4 = 3;
+	let focused_select;
+	let othershuffle = false;
+	const cubetypenames = ["All", "NxN", "Cuboid", "Non-cubic", "Big", "Baby"];
+	let SWITCHTIME = 15;
+	let isShuffling = false;
+	let otherShuffling = false;
 	let competeprogress = 0;
 	let mids = {3: 4, 4: 5, 5: 12};
 	let touchrotate = [];
-	const NOMOUSE = [13, "lasagna"];
+	const NOMOUSE = [13, "lasagna", "sandwich2x2"];
 	const removedcubies = {100: [1, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 25]};
 	let pracalgs = [];
 	let trackthin = null; // false means thin
@@ -49,11 +73,14 @@ export default function (p) {
 	let BORDER_SLIDER;
 	let SIZE_SLIDER2;
 	let GAP_SLIDER;
+	let STARTBLIND;
 	let saveao5data = {length: -1, session: -1};
 	let SPEED_SLIDER;
-	let DELAY_SLIDER;
+	let DELAY_SLIDER, RACE_SLIDER, RACE_DELAY_SLIDER;
 	let TWOBYTWO;
-	let THREEBYTHREE, FOURBYFOUR, FIVEBYFIVE, LASAGNA, THREEBYTHREEBYFOUR, TWOBYTHREEBYFOUR;
+	let TEAMBLIND_SEL;
+	let THREEBYTHREE, FOURBYFOUR, FIVEBYFIVE, LASAGNA, THREEBYTHREEBYFOUR, TWOBYTHREEBYFOUR, FOURPLUS, SANDWICH2, PLUSLITE,
+		PLUS3x3x2, SNAKE_EYE;
 	let NBYN;
 	let ROTX = 2.8
 	let ROTY = 7;
@@ -69,6 +96,7 @@ export default function (p) {
 	let custom = 0;
 	let peeks = 0;
 	let inp;
+	let numshuffle = 0;
 	let MODE = "normal";
 	let MINIMODE = "normal";
 	let INPUT, SESSION;
@@ -87,6 +115,7 @@ export default function (p) {
 	let bstep = 0, cstep = 0, dstep = false, mastep = 0, comstep = 0;
 	let OLL, PLL, PLLPRAC, OLLPRAC;
 	let competedata = {};
+	let competerooms = {};
 	let REGULAR;
 	let SPEEDMODE;
 	let TIMEDMODE;
@@ -95,7 +124,7 @@ export default function (p) {
 	let SPEEDMODE2;
 	let TIMEDMODE2;
 	let MOVESMODE2;
-	let TIMEGONE, COMPETE_1V1, COMPETE_GROUP;
+	let TIMEGONE, COMPETE_1V1, COMPETE_GROUP, COMPETE_TEAMBLIND;
 	let audioon = true;
 	let input = "keyboard";
 	let scramblemoves = 0;
@@ -124,12 +153,12 @@ export default function (p) {
 	let ONEBYTHREE, SANDWICH, CUBE3, CUBE4, CUBE5, CUBE13;
 	let SEL, SEL2, SEL3, SEL4, SEL5, SEL6, SEL7, IDMODE, IDINPUT, GENERATE, SETTINGS, SWITCHER,
 		VOLUME, HOLLOW, TOPWHITE, TOPPLL, SOUND, KEYBOARD, FULLSCREEN, ALIGN, DARKMODE, BANDAGE_SELECT, SMOOTHBANDAGE,
-		BANDAGE_SLOT, CUSTOMSHIFT;
+		BANDAGE_SLOT, CUSTOMSHIFT, PRACTICE_SEL, COMPETE_ADVANCED, COMPETE_INSPECTION;
 	let RESET, RESET2, RESET3, UNDO, REDO, SHUFFLE_BTN;
 	let SCRAM;
 	let INPUT2 = [];
 	let CUBE6, CUBE7, CUBE8, CUBE9, CUBE10, CUBE11, CUBE12, CUBE14, CUBE15, CUBE16, TWOBYTWOBYFOUR, THREEBYTHREEBYFIVE,
-		ONEBYFOURBYFOUR;
+		ONEBYFOURBYFOUR, ONEBYFIVEBYFIVE, ONEBYTWOBYTWO, ONEBYTWOBYTHREE;
 	let bandaged = [];
 	let darkmode = false;
 	let colororder = ["", "r", "o", "y", "g", "b", "w"];
@@ -164,12 +193,10 @@ export default function (p) {
 	let scrambles = [];
 	let savesetup = [];
 	let savebandage = [];
-	let song = "CcDdEFfGgAaB";
 	let savedark = [];
 	const MAX_WIDTH = "767px";
 	const MAX_WIDTH2 = "1199px";
-	// const nosavesetupdim = [1, 2, 15, 6];
-	const nosavesetupdim = [1,6];
+	const savesetupdim = [50, 100, 2, 15, 1, 3, 5, 4, 13, 14, 7, 10, 2, 8, 9, 11, 12, "snake_eye"]
 	let session = 0;
 	let savetimes = Array.from({ length: 5 }, () => ({ao5: [], mo5: [], movesarr: [], scrambles: []}));
 	let isthin = window.matchMedia("(max-width: " + MAX_WIDTH + ")").matches;
@@ -190,13 +217,33 @@ export default function (p) {
 	 };
 	 let allcubies = IDtoReal(IDtoLayout(decode(colorvalues["b"])));
 	let allcubestyle = 'text-align:center; font-size:20px; border: none;' + (!ismid ? "height:45px; width:180px;" : "");
-	const b_selectdim = {"2x2": changeTwo, "3x3": changeThree, "3x3x2": changeFive, "2x2x3": change19,
-		"Xmas 3x3": changeSeven, "4x4" : switchSize.bind(null, 4), "5x5" : switchSize.bind(null, 5), 
-		"1x3x3" : changeFour, "1x2x3" : switchSize.bind(null, 5, "1x2x3", "1x3x2", "Double Turns"), 
-		"2x2x4" : switchSize.bind(null, 4, "2x2x4"),
+	const b_selectdim = {"2x2": changeTwo.bind(null, false), "3x3": changeThree.bind(null, false), "3x3x2": changeFive, "2x2x3": change19,
+		"Xmas 3x3": changeSeven, "Xmas 2x2": change8, "4x4" : switchSize.bind(null, 4), "5x5" : switchSize.bind(null, 5),
+		"1x2x2" : switchSize.bind(null, 5, "1x2x2", "1x2x2", "3x3x2"),
+		"1x3x3" : changeFour, "1x2x3" : switchSize.bind(null, 5, "1x2x3", "1x3x2", "3x3x2"), 
+		"1x4x4" : switchSize.bind(null, 5, "1x4x4", "1x4x4", "3x3x2"),
+		"1x5x5" : switchSize.bind(null, 5, "1x5x5", "1x5x5", "3x3x2"),
+		"2x2x4" : switchSize.bind(null, 4, "2x2x4", "2x2x4"),
 		"2x3x4" : switchSize.bind(null, 5, "2x3x4", "3x2x4", "3x3x2"), 
 		"3x3x4" : switchSize.bind(null, 5, "3x3x4", "4x3x3", "3x3x2"), 
-		"3x3x5" : switchSize.bind(null, 5, "3x3x5")};
+		"3x3x5" : switchSize.bind(null, 5, "3x3x5", "5x3x3"),
+		"Sandwich 2x2": switchSize.bind(null, 3, "sandwich2x2", 100, "Normal", 2),
+		"Sandwich" : change17.bind(null, 0), "Jank 2x2" : change10,
+		"Earth Cube": switchSize.bind(null, 4, "lasagna"),
+		"Plus Lite": switchSize.bind(null, 3, "pluslite"),
+		"3x3x2 Plus Cube": switchSize.bind(null, 3, "plus3x3x2", 2, "3x3x2"),
+		"Plus Cube" : changeSix,
+		"4x4 Plus Cube" : switchSize.bind(null, 4, "4x4plus"),
+		"Cube Bandage" : change18.bind(null, 14, [[3,4,6,7,12,13,15,16]]),
+		"Slice Bandage" : change11.bind(null, 7, [[3,4,5,6,7,8]]),
+		"Bandaged 2x2" : change14.bind(null, 10, [[6,8]]),
+		"Bandaged 3x3x2" : change20.bind(null, 16, [[0,1], [24,25]]),
+		"Snake Eyes" : switchSize.bind(null, 3, "snake_eye", 50, "Middle Slices", 3, [[6, 15, 24, 8, 17, 26, 11, 2, 20, 0, 9, 18]]),
+		"Pillars" : change12.bind(null, 8, [[0,3,6], [2,5,8]]),
+		"Triple Quad" :change13.bind(null, 9, [[7,8,5,4],[16,15,12],[25,26,23,22]]),
+		"Z Perm" : 	change15.bind(null, 11, [[0,9], [20,11], [24,15], [8,17]]),
+		"T Perm" : change16.bind(null, 12, [[0,9], [2,11], [24,15], [26,17]])
+	};
 
 	// attach event
 
@@ -269,9 +316,12 @@ class Timer {
 		this.inspection = false;
 	}
 
-	setTime(s) {
-		this.startTime = s;
-		this.overallTime = s;
+	setTime(s, stopped = false) {
+		this.startTime = Date.now() - s;
+		if (stopped) {
+			this.startTime = s;
+			this.overallTime = s;
+		}
 	}
 	
 	_getTimeElapsedSinceLastStart () {
@@ -326,6 +376,10 @@ class Timer {
 		
 		return this.overallTime;
 	}
+
+	roundedTime() {
+		return Math.round(this.getTime() / 10)/100.0
+	}
 }
 function isMobile() {  //phone computer
 	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -352,13 +406,23 @@ function setWidth() {
 		CAMZOOM = ZOOM3;
 		setDisplay("none", ["audio", "bannercube", "bannerlogin"]);
 		getEl("challenge").innerHTML = "&nbsp;Weekly";
+		getEl("compete").innerHTML = "&nbsp;Co-op";
+		getEl("account").innerHTML = "&nbsp;Create Account";
+		getEl("loaddata").innerHTML = ""
+		getEl("savedata").innerHTML = ""
 		getEl("banner").style.paddingBottom = "10px";
 		getEl("or_instruct4").style.paddingTop = "10px";
-
 	} else {
 		ZOOM3 = -170;
 		ZOOM2 = -25;
 		CAMZOOM = ZOOM3;
+		getEl("banner").style.paddingBottom = "0px";
+		setDisplay("inline", ["audio", "bannercube", "bannerlogin"]);
+		getEl("challenge").innerHTML = "&nbsp;Weekly Challenges";
+		getEl("compete").innerHTML = "&nbsp;Multiplayer Battle";
+		getEl("account").innerHTML = "&nbsp;Create an Account";
+		getEl("loaddata").innerHTML = "&nbsp;Load Data";
+		getEl("savedata").innerHTML = "&nbsp;Save Data";
 	}
 	// var isSafari = false; //window.safari !== undefined || isIpad(); //safari
 	if (change[0] != ZOOM2 && change[1] != ZOOM3) {
@@ -504,6 +568,19 @@ p.setup = () => {
 		DELAY_SLIDER.parent("delay");
 		DELAY_SLIDER.style('width', '100px');
 
+		RACE_SLIDER = p.createSlider(0.01, 2, 0.01, 0.01);
+		RACE_SLIDER.parent("r_slider");
+		if (localStorage.racespeed) {
+			RACE_SLIDER.value(localStorage.racespeed);
+		}
+
+		RACE_DELAY_SLIDER = p.createSlider(0, 4, 0, 0.1);
+		RACE_DELAY_SLIDER.parent("r_delay");
+		if (localStorage.racedelay) {
+			RACE_DELAY_SLIDER.value(localStorage.racedelay);
+		}
+		
+
 		setWidth();
 		SIZE_SLIDER2 = p.createSlider(-1000, 300, -(ZOOM3), 5);
 		SIZE_SLIDER2.input(sliderUpdate2);
@@ -522,6 +599,8 @@ p.setup = () => {
 	IDMODE = p.createButton('Save/Load ID');
 	SETTINGS = p.createButton('');
 	SWITCHER = p.createButton('');
+	setButton(SWITCHER, "switcher", 'btn btn-primary', 'text-align:center; font-size:20px;',() => {if (DIM2 == 50) changeTwo() 
+		else changeThree()});
 	VOLUME = p.createButton('');
 	REGULAR2 = p.createButton('Normal');
 	SPEEDMODE2 = p.createButton('Speed');
@@ -546,12 +625,20 @@ p.setup = () => {
 	CUBE16 = p.createButton('Bandaged 3x3x2');
 	FOURBYFOUR = p.createButton('4x4');
 	FIVEBYFIVE = p.createButton('5x5');
-	ONEBYFOURBYFOUR = p.createButton('1x1x4');
+	ONEBYFOURBYFOUR = p.createButton('1x4x4');
+	ONEBYFIVEBYFIVE = p.createButton('1x5x5');
 	TWOBYTWOBYFOUR = p.createButton('2x2x4');
 	TWOBYTHREEBYFOUR = p.createButton('2x3x4');
 	THREEBYTHREEBYFIVE = p.createButton('3x3x5');
 	THREEBYTHREEBYFOUR = p.createButton('3x3x4');
+	FOURPLUS = p.createButton();
 	LASAGNA = p.createButton('Lasagna Cube');
+	ONEBYTWOBYTWO = p.createButton('1x2x2');
+	ONEBYTWOBYTHREE = p.createButton('1x2x3');
+	SANDWICH2 = p.createButton('Sandwich 2x2');
+	PLUSLITE = p.createButton('Plus Lite');
+	PLUS3x3x2 = p.createButton('3x3x2 Plus Cube');
+	SNAKE_EYE = p.createButton('Snake Eyes');
 	refreshButtons();
 
 
@@ -559,10 +646,10 @@ p.setup = () => {
 
 
 	TWOBYTWO = p.createButton('2x2');
-	setButton(TWOBYTWO, "type", 'btn btn-light btn-sm', 'border-color: black;', changeTwo.bind(null, 0));
+	setButton(TWOBYTWO, "type", 'btn btn-light btn-sm', 'border-color: black;', changeTwo.bind(null));
 
 	THREEBYTHREE = p.createButton('3x3');
-	setButton(THREEBYTHREE, "type2", 'btn btn-warning btn-sm', 'border-color: black;', changeThree.bind(null, 0));
+	setButton(THREEBYTHREE, "type2", 'btn btn-warning btn-sm', 'border-color: black;', changeThree.bind(null));
 
 	NBYN = p.createButton('More');
 	setButton(NBYN, "type4", 'btn btn-light btn-sm', 'border-color: black; ', cubemode.bind(null, 0));
@@ -619,6 +706,27 @@ p.setup = () => {
 	SCRAM.option("Last Layer");
 	SCRAM.option("Pattern");
 
+	PRACTICE_SEL = p.createSelect();
+	PRACTICE_SEL.parent("practice_select");
+	Object.keys(b_selectdim).forEach((o) => {
+		PRACTICE_SEL.option(o);
+	})
+	PRACTICE_SEL.changed(() => {
+		bandaged = [];
+		b_selectdim[PRACTICE_SEL.value()]();
+		setDisplay("none", ["keymap", "input2"])
+	})
+	
+	COMPETE_ADVANCED = p.createCheckbox();
+	COMPETE_ADVANCED.parent("compete_advanced");
+	COMPETE_ADVANCED.changed(() => {
+		competeSettings();
+	});
+
+	COMPETE_INSPECTION = p.createCheckbox();
+	COMPETE_INSPECTION.parent("compete_inspection");
+	COMPETE_INSPECTION.checked(true);
+
 	let colors2 = ["blue", "white", "red", "green", "yellow", "orange", "black", "magenta"];
 	for(let i = 0; i < colors2.length; i++)
 	{
@@ -636,7 +744,7 @@ p.setup = () => {
 	SEL5.selected('green');
 	SEL6.selected('yellow');
 
-  	SEL.changed(change9.bind(null, 0));
+	SEL.changed(change9.bind(null, 0));
 	SEL2.changed(change9.bind(null, 0));
 	SEL3.changed(change9.bind(null, 0));
 	SEL4.changed(change9.bind(null, 0));
@@ -696,9 +804,6 @@ p.setup = () => {
 	INPUT2[17].mousePressed(inputPressed.bind(null, INPUT2[17].value()));
 	INPUT2[18].mousePressed(() => {flexDo(Undo, undo)});
 	INPUT2[19].mousePressed(() => {flexDo(Redo, redo)});
-	
-
-	setCustomShape();
 
 	const colors = [
 		{ name: 'Red', className: 'red', c: "#da1a18"},
@@ -760,6 +865,20 @@ p.setup = () => {
 	SEL7.selected('3x3');
 	SEL7.changed(() => {b_selectdim[SEL7.value()](); change9(true)});
 
+	if (localStorage.saveshapemod) {
+		saveshapemod = JSON.parse(localStorage.saveshapemod).checkarr;
+		let size = JSON.parse(localStorage.saveshapemod).size;
+		SEL7.selected(size);
+		if (size[0] != 2) {
+			setCustomShape(true);
+		} else {
+			setCustomShape(true);
+		}
+		CUSTOMSHIFT.checked(JSON.parse(localStorage.saveshapemod).customshift);
+	} else {
+		setCustomShape();
+	}
+
 	BANDAGE_SELECT = p.createSelect();
 	BANDAGE_SELECT.option("3x3");
 	BANDAGE_SELECT.option("4x4");
@@ -802,6 +921,12 @@ p.setup = () => {
 		console.log(bandaged, bandaged3)
 		reSetup();
 	})
+	
+	TEAMBLIND_SEL = p.createSelect();
+	TEAMBLIND_SEL.parent("com_teamblind_container");
+	["3x3", "2x2", "Xmas 2x2", "Xmas 3x3", "Plus Cube"].forEach(cube => {
+		TEAMBLIND_SEL.option(cube)
+	}) 
 
 	INPUT.option("Normal");
 	INPUT.option("3x3x2");
@@ -811,6 +936,42 @@ p.setup = () => {
 	setInput();
 	
 	INPUT.changed(changeInput.bind(null, 0));
+
+	competesel_buttons = [];
+
+	for (let i = 0; i < cubetypenames.length; i++) {
+		let btn = p.createButton(cubetypenames[i]);
+		setButton(btn, "select_container", 'btn btn-primary', 'display: inline-block; margin-left: 5px; margin-top: 5px;', () => {
+			compete_modnum = i;
+			competeSelectButtons();
+		});
+
+		competesel_buttons.push(btn);
+	}
+
+	Object.keys(DIMS_OBJ).forEach((dim, i) => {
+		let btn = p.createButton(dim);
+		const NUM_COLS = isMobile() && isthin ? 2 : 3
+		setButton(btn, `compete_col${i % NUM_COLS + 1}`, 'btn btn-info', 
+			'display: block; margin-top: 5px; font-size: 15px; width: 140px;', () => {
+			finishCompeteSelect(dim);
+			document.getElementById('finish_match').scrollIntoView({ behavior: 'smooth', block: "center" });
+		});
+		btn.mouseOver(() => {
+			if (isMobile()) {
+				return;
+			}
+			bandaged = [];
+			b_selectdim[dim]();
+			getEl("keymap").style.display = 'none';
+			getEl("compete_difficulty").innerHTML = `Difficulty: ${DIMS_OBJ[dim].difficulty}/5`;
+		});
+		btn.mouseOut(() => {
+			getEl("compete_difficulty").innerHTML = ``;
+		});
+
+		competedim_buttons.push(btn);
+	})
 
 	const hotkeys = [
 		["Esc", "Reset"],
@@ -845,21 +1006,18 @@ p.setup = () => {
 		["⇧ -", "Other Cubes"],
 	];
 
-    const table = document.getElementById('hotkeytable');
+	appendToTable(hotkeys, "hotkeytable", 2);
 
-    for (let i = 0; i < hotkeys.length; i += 2) {
-        const row = document.createElement('tr');
-        
-        // Create first cell set (number and description)
-        row.innerHTML += `<td><b>${hotkeys[i][0]}</b></td><td>${hotkeys[i][1]}</td>`;
-        
-        // Check if there's a second cell set (for odd-length arrays)
-        if (i + 1 < hotkeys.length) {
-            row.innerHTML += `<td><b>${hotkeys[i + 1][0]}</b></td><td>${hotkeys[i + 1][1]}</td>`;
-        }
-        
-        table.appendChild(row);
-    }
+	const hotkeys2 = [
+		["@everyone", "Highligts your message to everyone"],
+		["@name", "Highlights message to username name"],
+		["Ctrl + V/Cmd + V", "Pastes text & screenshots"],
+		["/c", "Clears screen"],
+		["/:) /;), etc.", "🙂, 😉"],
+		["/crown", "Special crown emote"]
+	];
+
+	appendToTable(hotkeys2, "chattable", 1);
 
 	const BACK = p.createButton('Back');
 	setButton(BACK, "custom3", 'btn btn-light', 'border-color: black;', cubemode.bind(null, 0));
@@ -891,6 +1049,18 @@ p.setup = () => {
 
 	const SETTINGSBACK = p.createButton('Back');
 	setButton(SETTINGSBACK, "settingsback", 'btn btn-light', 'font-size:20px; border-color: black;', regular.bind(null, 0));
+
+	const COMPETEBACK = p.createButton('Back');
+	setButton(COMPETEBACK, "competeback", 'btn btn-light', 'font-size:20px; border-color: black;', competemode.bind(null, 0));
+
+	const COMPETERESTORE = p.createButton('Restore Defaults');
+	setButton(COMPETERESTORE, "competerestore", 'btn btn-light', 'font-size:20px; border-color: black;', () => {});
+
+	const COMPETESELBACK = p.createButton('Cancel');
+	setButton(COMPETESELBACK, "competesel_back", 'btn btn-danger', 'font-size:20px;', () => {
+		setDisplay("none", ["compete_select"]);
+		setDisplay("block", ["creating_match"]);
+	});
 
 	const HOTKEYBACK = p.createButton('Back');
 	setButton(HOTKEYBACK, "hotkeyback", 'btn btn-light', 'font-size:20px; border-color: black;', settingsmode.bind(null, 0));
@@ -928,7 +1098,7 @@ p.setup = () => {
 	const STARTMATCH = p.createButton("Start Match");
 	setButton(STARTMATCH, "startmatch", 'btn btn-success', 'font-size: 25px;', startMatch);
 
- 	CONTINUEMATCH = p.createButton("Start Next Round");
+	CONTINUEMATCH = p.createButton("Start Next Round");
 	setButton(CONTINUEMATCH, "continuematch", 'btn btn-success', 'font-size: 25px;', continueMatch);
 
 	const JOINROOM = p.createButton("Join Room");
@@ -1031,7 +1201,7 @@ p.setup = () => {
 	setButton(RESET3, "reset3_div", bstyle, '', speedSetup.bind(null, 0));
 
 	SHUFFLE_BTN = p.createButton('Scramble');
-	setButton(SHUFFLE_BTN, "shuffle_div", 'btn btn-primary', '', shuffleCube.bind(null, 0));
+	setButton(SHUFFLE_BTN, "shuffle_div", 'btn btn-primary', '', shuffleCube);
 
 	const STOP = p.createButton('Stop Time');
 	setButton(STOP, "stop_div", bstyle, '', stopTime.bind(null, 0));
@@ -1057,14 +1227,17 @@ p.setup = () => {
 	const M_34 = p.createButton('3 to 5 Movers');
 	setButton(M_34, "m_34", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color:#42ff58; border-color: black;', m_34.bind(null, 0));
 
-	const M_4 = p.createButton('Endless (Medium)');
+	const M_4 = p.createButton('Endless');
 	setButton(M_4, "m_4", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color:#ff9ee8; border-color: black;', m_4.bind(null, 0));
 
 	const IDCOPY = p.createButton('Copy');
-	setButton(IDCOPY, "idcopy", 'btn btn-primary', 'margin-left: 10px', () => {
+	setButton(IDCOPY, "idcopy", 'btn btn-secondary', 'width: 50px; margin-left: 6px; font-size: 13px; padding-left: 6px; padding-right: 6px; padding-top: 3px; padding-bottom: 3px;', () => {
 		navigator.clipboard.writeText(document.getElementById("idcurrent").innerText).then(
 			function(){
-				successSQL("Position ID Copied");
+				IDCOPY.html("✓");
+				setTimeout(() => {
+					IDCOPY.html("Copy");
+				}, 1000)
 			})
 		  .catch(
 			 function() {
@@ -1073,16 +1246,19 @@ p.setup = () => {
 	});
 
 	const PEEK = p.createButton('Peek');
-	setButton(PEEK, "peekbutton", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color:#42ff58; border-color: black;', () => {toggleOverlay(false);});
+	setButton(PEEK, "peekbutton", 'btn btn-primary', 'font-size: 30px', () => {toggleOverlay(false);});
+
+	const COMPETESWITCH = p.createButton('Switch Blindfold');
+	setButton(COMPETESWITCH, "competeswitch", 'btn btn-primary', ' font-size:20px;', switchBlindfold);
 
 	FULLSCREEN = p.createButton('');
-	setButton(FULLSCREEN, "fullscreen", 'bi bi-arrows-fullscreen', 'font-size: 40px; height: 60px; width: 60px;  border: none;', () => {fullScreen(!fullscreen)});
+	setButton(FULLSCREEN, "fullscreen", 'bi bi-arrows-fullscreen', 'font-size: 40px; height: 60px; width: 60px;  z-index: 2; border: none;', () => {fullScreen(!fullscreen)});
 	FULLSCREEN.position(cnv_div.offsetWidth-50,window.innerHeight-145);
 	FULLSCREEN.style("background-color: transparent; color: " + document.body.style.color);
 	FULLSCREEN.attribute('title', 'Fullscreen');
 
 	ALIGN = p.createButton('');
-	setButton(ALIGN, "align", 'bi bi-camera', 'font-size: 40px; height: 60px; width: 60px;  border: none;', alignIt);
+	setButton(ALIGN, "align", 'bi bi-camera', 'font-size: 40px; height: 60px; width: 60px; z-index: 2; border: none;', alignIt);
 	ALIGN.position(30,window.innerHeight-145);
 	ALIGN.attribute("title", "Align Camera");
 	ALIGN.style("background-color: transparent; color: " + document.body.style.color);
@@ -1105,11 +1281,14 @@ p.setup = () => {
 	PLL = p.createButton('PLL/PBL Attack');
 	setButton(PLL, "s_PLL", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #ffb163; border-color: black;', speedPLL.bind(null, 0));
 
-	const RACE = p.createButton('Start Race');
-	setButton(RACE, "s_RACE", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #fc5f53; border-color: black;', speedRace.bind(null, 0));
+	const RACE = p.createButton('Physical Race');
+	setButton(RACE, "s_PHYSICALRACE", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #fc5f53; border-color: black;', speedRace.bind(null, "physical"));
+
+	const VIRTUALRACE = p.createButton('Virtual Race');
+	setButton(VIRTUALRACE, "s_VIRTUALRACE", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #fc5f53; border-color: black;', speedRace.bind(null, "virtual"));
 
 	const S_START = p.createButton('Start Practice');
-	setButton(S_START, "s_start", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #42ff58; border-color: black;', practicePLL.bind(null, 0));
+	setButton(S_START, "s_start", 'btn btn-success', 'font-size:25px;', practicePLL.bind(null, 0));
 
 	PLLPRAC = p.createButton('PLL Practice');
 	setButton(PLLPRAC, "s_pllprac", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #FBF35B; border-color: black;', selectPLL.bind(null, "PLL"));
@@ -1118,10 +1297,10 @@ p.setup = () => {
 	setButton(OLLPRAC, "s_ollprac", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #FBF35B; border-color: black;', selectPLL.bind(null, "OLL"));
 
 	const READYBOT = p.createButton('Ready');
-	setButton(READYBOT, "readybot", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #42ff58; border-color: black;', speedRace2.bind(null, 0));
+	setButton(READYBOT, "readybot", 'btn btn-success', 'font-size:25px;', speedRace2.bind(null, 0));
 
 	const RACE2 = p.createButton('Continue');
-	setButton(RACE2, "s_RACE2", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #42ff58; border-color: black;', speedRace2.bind(null, 0));
+	setButton(RACE2, "s_RACE2", 'btn btn-success', 'font-size: 25px;', speedRace2.bind(null, 0));
 	
 	const STARTCHAL = p.createButton('Start Weekly');
 	setButton(STARTCHAL, "c_start", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #42ff58; border-color: black;', startchallenge);
@@ -1132,17 +1311,23 @@ p.setup = () => {
 	const STARTDCHAL2 = p.createButton('Start Daily 2x2');
 	setButton(STARTDCHAL2, "cd2_start", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #ff9ee8; border-color: black;', () => {dailychallenge(2)});
 
-	const STARTBLIND = p.createButton('Start Blind');
+	STARTBLIND = p.createButton('Blind 3x3');
 	setButton(STARTBLIND, "b_regular", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #FBF35B; border-color: black;', () => {movesmode(); blindmode()});
 
 	const STARTBLIND2 = p.createButton('Blind Marathon');
 	setButton(STARTBLIND2, "b_marathon", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #FBF35B; border-color: black;', () => {movesmode(); startMarathon("blind")});
 
-	const STARTMARATHON = p.createButton('Shape Marathon');
-	setButton(STARTMARATHON, "ma_start", 'btn btn-info', 'height:60px; width:180px; text-align:center; font-size:20px; background-color: #ffb163; border-color: black;', () => {startMarathon("shape")});
+	const STARTMARATHON = p.createButton('Shape');
+	setButton(STARTMARATHON, "ma_start", 'btn btn-info', 'height:50px; width:80px; text-align:center; font-size:20px; background-color: #ffb163; border-color: black;', () => {startMarathon("shape")});
 	
-	const STARTMARATHON2 = p.createButton('Bandage Marathon');
-	setButton(STARTMARATHON2, "ma_start2", 'btn btn-info', 'height:60px; width:200px; text-align:center; font-size:20px; background-color: #ffb163; border-color: black;', () => {startMarathon("bandage")});
+	const STARTMARATHON2 = p.createButton('Bandage');
+	setButton(STARTMARATHON2, "ma_start2", 'btn btn-info', 'height:50px; width:100px; text-align:center; font-size:20px; background-color: #ffb163; border-color: black;', () => {startMarathon("bandage")});
+
+	const STARTMARATHON3 = p.createButton('Cuboid');
+	setButton(STARTMARATHON3, "ma_start3", 'btn btn-info', 'height:50px; width:100px; text-align:center; font-size:20px; background-color: #ffb163; border-color: black;', () => {startMarathon("cuboid")});
+
+	const STARTMARATHON4 = p.createButton('Baby');
+	setButton(STARTMARATHON4, "ma_start4", 'btn btn-info', 'height:50px; width:80px; text-align:center; font-size:20px; background-color: #ffb163; border-color: black;', () => {startMarathon("baby")});
 
 	const SAVEPOSITION = p.createButton('Save Current Position');
 	setButton(SAVEPOSITION, "saveposition", 'btn btn-success', '', () => {
@@ -1236,12 +1421,37 @@ p.setup = () => {
 	setButton(COMPETE_1V1, "compete_1v1", 'btn btn-primary', 'margin-right: 5px; borderWidth: 0px;', competeSettings.bind(null, "1v1"));
 
 	COMPETE_GROUP = p.createButton('Group Battle');
-	setButton(COMPETE_GROUP, "compete_group", 'btn btn-primary', 'margin-right: 10px; borderWidth: 0px;', competeSettings.bind(null, "group"));
+	setButton(COMPETE_GROUP, "compete_group", 'btn btn-primary', 'margin-right: 5px; borderWidth: 0px;', competeSettings.bind(null, "group"));
+
+	COMPETE_TEAMBLIND = p.createButton('Team Blind');
+	setButton(COMPETE_TEAMBLIND, "compete_teamblind", 'btn btn-primary', 'margin-right: 5px; borderWidth: 0px;', competeSettings.bind(null, "teamblind"));
+
+	if (!localStorage.username) 
+		localStorage.username = "signedout";
+	const queryString = window.location.search;
+	const urlParams = new URLSearchParams(queryString);
+	const r = urlParams.get('room')
+	if (r && r >= 1 && r <= 10000) {
+		console.log("Param", r);
+		competemode();
+		joinRoom(r)
+	}
+	if (urlParams.get('race') == "true") {
+		botConnect(urlParams);
+	}
+
+	//end setup
 }
 
 
 setInterval(() => {
 	timeInSeconds = Math.round(timer.getTime() / 10)/100.0;
+	if (MODE == "competing" && competedata.data.type == "teamblind") {
+		timeInSeconds = blindTime() ?? 0;
+		if (competedata.stage == "results") {
+			timeInSeconds = competedata.data.time;
+		}
+	}
 	document.getElementById('time').innerText = timeInSeconds;
 	document.getElementById('moves').innerText = moves + (window.matchMedia("(max-width: " + MAX_WIDTH + ")").matches ? " m" : " moves");
 	document.getElementById('speed').innerText = Math.round(SPEED*100);
@@ -1271,10 +1481,10 @@ setInterval(() => {
 		updateSession();
 	}
 	//local
-	// alert("here2")
 	localStorage.saveao5 = JSON.stringify(savetimes);
 	localStorage.session = session;
-	localStorage.speed = SPEED;
+	if (MODE != "bot")
+		localStorage.speed = SPEED;
 	localStorage.topwhite = TOPWHITE.value();
 	localStorage.toppll = TOPPLL.value();
 	localStorage.keyboard = KEYBOARD.value();
@@ -1282,6 +1492,8 @@ setInterval(() => {
 	localStorage.hollow = HOLLOW.checked();
 	localStorage.border_width = BORDER_SLIDER.value();
 	localStorage.audioon = audioon;
+	localStorage.racespeed = RACE_SLIDER.value();
+	localStorage.racedelay = RACE_DELAY_SLIDER.value();
 	if (localStorage.c_today == 0) localStorage.c_today = "DNF";
 	if (localStorage.c_today2 == 0) localStorage.c_today2 = "DNF";
 	if (!localStorage.username) 
@@ -1312,22 +1524,12 @@ setInterval(() => {
 		}
 		if(race > 1){ //racedetect
 			console.log("racedetect");
-			round++;
-			roundresult[1]++;
-			roundresult.push([Math.round(timer.getTime() / 10)/100.0, 1]);
-			if(roundresult[1] < 5){
-				document.getElementById("s_INSTRUCT").innerHTML = "Bot Wins!";
-				document.getElementById("s_instruct").innerHTML = "Press continue to go to the next round!";
-				document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
-				document.getElementById("s_RACE2").style.display = "block";
-				raceTimes();
-			}
-			else{
-				document.getElementById("s_INSTRUCT").innerHTML = "You were defeated by the bot :(";
-				document.getElementById("s_instruct").innerHTML = "Do you want to play again?";
-				document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
-				document.getElementById("s_RACE").style.display = "block";
-				raceTimes();
+			if ((MINIMODE == "physical")) {
+				raceWinner(1);
+			} else if (MINIMODE == "virtual") {
+				socket.emit("race_win", socket.id, 0)
+			} else {
+				socket.emit("race_win", raceid, 1)
 			}
 		}
 	}
@@ -1496,13 +1698,25 @@ setInterval(() => {
 			setTimeout(() => {fadeInText(0, "3 secs")}, 400);
 			cstep = 1.5;
 		}
+	} else if (getEl("practice_container").style.display == "block" && isSolved()) {
+		if (timer.isRunning && timer.getTime() > secs)
+			timer.stop();
 	} else if (comstep > 1 && comstep % 2 == 0) {
 		if (isSolved()) {
 			comstep++;
 			timer.stop();
-			if(ao5 == 0) ao5 = [Math.round(timer.getTime() / 10)/100.0];
-			else ao5.push(Math.round(timer.getTime() / 10)/100.0);
-			socket.emit("solved", room, Math.round(timer.getTime() / 10)/100.0);
+			let time = timer.getTime() < 0 ? 0 : Math.round(timer.getTime() / 10)/100.0;
+			if(ao5 == 0) ao5 = [time];
+			else ao5.push(time);
+			console.log("time is ", time, timer.getTime());
+			socket.emit("progress-update", room, 100, Math.round(timer.getTime() / 10)/100.0, isShuffling ? false : getID());
+			if (competedata.data.type == "teamblind") {
+				competeSolved(competedata);
+				socket.emit("solved", room, time, blindTime());
+			} else {
+				socket.emit("solved", room, time, timer.getTime());
+			}
+			setDisplay("none", ["giveup", "reset2_div", "undo", "redo"])
 			canMan = false;
 		} else if (timer.isRunning && timer.inspection == 2 && timer.getTime() > 0) {
 			timer.stop();
@@ -1522,10 +1736,10 @@ setInterval(() => {
 	}
 	if(MODE != "cube")
 	{
-		if(DIM == 50)
-			DIM4 = 3;
-		else
+		if(DIM2 == 100)
 			DIM4 = 2;
+		else
+			DIM4 = 3;
 	}
 	else{
 		if(Array.isArray(DIM) && DIM[0] != "adding")
@@ -1561,7 +1775,7 @@ setInterval(() => {
 	}
 	if(MODE == "cube" && (!mouseAllowed() || (custom == 1 && !canMouse()))) document.getElementById("turnoff").innerHTML = "(Mouse inputs are turned off.)";
 	else document.getElementById("turnoff").innerHTML = "(Mouse inputs are turned on.)";
-	if(MODE == "cube" && modnum != 1)bandaged = [];
+	if(MODE == "cube" && modnum != 1 && DIM != "snake_eye") bandaged = [];
 	if(document.getElementById("idcurrent").innerHTML != getID()) document.getElementById("idcurrent").innerHTML = getID();
 	if(TOPPLL.value() == "Opposite of above" && (["PLL", "OLL", "pracPLL"].includes(MINIMODE)))
 		realtop = opposite[TOPWHITE.value()[0].toLowerCase()];
@@ -1575,7 +1789,7 @@ setInterval(() => {
 	} else if (!isthin){
 		SETTINGS.style("background-color: #8ef4ee; color: " + document.body.style.color);
 	}
-	if (document.getElementById("cnv_div").style.display == "none" && (getEl("s_prac3x3o").style.display == "none" || pracmode != "OLL")) {
+	if (document.getElementById("cnv_div").style.display == "none" && (getEl("s_prac3x3o").style.display == "none" || pracmode != "OLL") && !(MODE.includes("compete") && isthin)) {
 		document.getElementById("cnv_div").style.display = "block";
 		fullScreen(false);
 		reCam();
@@ -1586,8 +1800,12 @@ setInterval(() => {
 	if (MODE == "timed") { TIMEDMODE2.style('background-color', '#8ef5ee');  TIMEDMODE.style('background-color', '#8ef5ee');}
 	if (MODE == "normal") REGULAR.style('background-color', '#8ef5ee');
 	if (MODE == "moves") MOVESMODE.style('background-color', '#8ef5ee');
-	getEl("wannapeek").style.display = getEl("overlay").style.display;
-	getEl("peekbutton").style.display = getEl("overlay").style.display;
+	if (MODE == "moves") {
+		getEl("wannapeek").style.display = getEl("overlay").style.display;
+		getEl("peekbutton").style.display = getEl("overlay").style.display;
+	} else {
+		setDisplay("none", ["wannapeek", "peekbutton"])
+	}
 	getEl("overlay").style.backgroundColor = BACKGROUND_COLOR;
 	getEl("custommouse").innerHTML = canMouse() ? "(Mouse inputs are turned on.)" : "(Mouse inputs are turned off.)";
 	getEl("switcher").style.display = (getEl("blind").style.display == "block" || (getEl("s_prac").style.display != "none")) ? "block" : "none";
@@ -1618,20 +1836,100 @@ setInterval(() => {
 			}
 		}
 	}
+	if (MINIMODE == "virtual" && timer.isRunning && timer.inspection && timer.getTime() > -3000 && timer.getTime() < 0) {
+		fadeInText(1, "3 secs");
+		setTimeout(() => {fadeInText(0, "3 secs")}, 400);
+		timer.inspection = false;
+	} 
 	getEl("leftpaint").style.opacity = colorindex == 0 ? 0.3 : 1;
 	getEl("rightpaint").style.opacity = colorindex == 54 ? 0.3 : 1;
 	getEl("uppaint").style.opacity = colorindex == 0 ? 0.3 : 1;
 	getEl("downpaint").style.opacity = colorindex == 54 ? 0.3 : 1;
 	if (colorindex > 52) activeKeys.clear();
-	// bandaged3[BANDAGE_SELECT.value()][BANDAGE_SLOT.value()] = bandaged;
-	// bandaged3[BANDAGE_SELECT.value()].slot = BANDAGE_SLOT.value();
 	localStorage.bandaged3 = JSON.stringify(bandaged3);
 	if (typeof bandaged3[BANDAGE_SELECT.value()] !== "object") {
 		bandaged3[BANDAGE_SELECT.value()] = {}; // Ensure it's an object
 	  }
 	setDisplay(SIZE > 3 ? "block" : "none", ["customshift"]);
+	if (comstep > 0 && (competedata.stage != "ingame")) {
+		setDisplay("none", ["giveup", "reset2_div", "undo", "redo"])
+	}
+	SWITCHER.html(DIM2 == 50 ? "Switch to 2x2" : "Switch to 3x3");
+	if (MINIMODE == "virtual" && timer.getTime() > 0 && juststarted) {
+		socket.emit("start_race");
+		setDisplay("inline", ["giveup"]);
+		juststarted = false;
+	}
+	if (MINIMODE == "physical" && timer.getTime() > 0 && juststarted) {
+		setDisplay("inline", ["giveup"]);
+		juststarted = false;
+	}
+	let speedval = RACE_SLIDER.value() * 100;
+	let delay = RACE_DELAY_SLIDER.value();
+	let estimate;
+	for (let x in speeddata) {
+		if (speedval - 25 < x) {
+			estimate = speeddata[x];
+			let offset = estimate - speeddata[+x + 25];
+			estimate -= ((speedval % 25) / 25) * offset;
+			break;
+		}
+	}
+	let avgmoves = 66;
+	if (DIM == 100) {
+		avgmoves = 30;
+	}
+	estimate += (avgmoves * estimate) + delay * (avgmoves - 1);
+	estimate = Math.round(estimate * 100)/100.0;
+	if (botestimate != estimate && ["virtual", "physical"].includes(MINIMODE)) {
+		botestimate = estimate;
+		console.log("bruh ", delay, botestimate, MINIMODE);
+		getEl("botestimate").innerHTML = "Estimated bot solve time: " + botestimate;
+	}
+
+	getEl("r_speed").innerHTML = Math.round(RACE_SLIDER.value() * 100);
+	getEl("r_delay2").innerHTML = RACE_DELAY_SLIDER.value();
+	getEl("race3x3score").style.display = DIM == 50 ? "block" : "none";
+	getEl("race2x2score").style.display = DIM == 100 ? "block" : "none";
+	STARTBLIND.html(DIM == 50 ? "Blind 3x3" : "Blind 2x2");
+	if (timer.isRunning) {
+		getEl("continuematch").style.display = "none";
+	}
+	compete_dims = competeDims();
+	if (COMPETE_ADVANCED.checked()) {
+		compete_dims = compete_dims.filter((_, index) => index % 2 == 0);
+		compete_shufflearr = competeDims().filter((_, index) => index % 2 == 1)
+	} else {
+		compete_shufflearr = [];
+	}
+	getEl("practice_instruct").style.display = isthin ? "none" : "block";
+	PRACTICE_SEL.style('width', isthin ? "125px" : "");
+	if (custom == 1) {
+		saveshapemod = [];
+		let size = SEL7.value()[0];
+		for (let i = 0; i < size * size * size; i++) {
+			saveshapemod[i] = CHECK[i].checked();
+		}
+		localStorage.saveshapemod = JSON.stringify({checkarr: saveshapemod, size: SEL7.value(), 
+			colors: [SEL.value(), SEL2.value(), SEL3.value(), SEL4.value(), SEL5.value(), SEL6.value()],
+			customshift : CUSTOMSHIFT.checked()});
+	}
+	if (timer.getTime() > 999999 && MODE == "competing") {
+		// timer.stop();
+		// timer.reset();
+		// timer.setTime(-15000, true);
+		// timer.start();
+	}
+	if (MODE == "competing" && competedata.stage == "ingame") {
+		competeTimes(competedata);
+	} 
 	if (comstep > 0 && competedata.stage == "ingame") {
-		socket.emit("progress-update", room, competeprogress, Math.round(timer.getTime() / 10)/100.0);
+		console.log(blindTime(), competedata.data.startblind + SWITCHTIME)
+		if (competedata.data.type == "teamblind" && blindTime() > competedata.data.startblind + SWITCHTIME) {
+			if (!isSolved()) {
+				setDisplay("block", ["blind2", "competeswitch"])
+			}
+		}
 	}
 }, 10)
 //forever
@@ -1657,10 +1955,10 @@ function reSetup(rot) {
 
 	if(MODE != "cube")
 	{
-		if(DIM == 50)
-			DIM4 = 3;
-		else
+		if(DIM2 == 100)
 			DIM4 = 2;
+		else
+			DIM4 = 3;
 	}
 	else{
 		if(Array.isArray(DIM) && DIM[0] != "adding")
@@ -1698,7 +1996,6 @@ function reSetup(rot) {
 	document.getElementById("stepbig").innerHTML = "";
 	document.getElementById("fraction").innerHTML = "";
 	document.getElementById("s_instruct").innerHTML = "";
-	setDisplay("none", ["s_easy", "s_medium", "s_OLL", "s_PLL", "s_bot", "s_high", "s_RACE", "m_34", "m_4", "m_high", "points_par", "giveup2", "hint"]);
 	setSpecial();
 	let cnt = 0;
 	//allcubies = false;
@@ -1902,15 +2199,14 @@ function IDtoReal(id){
 
 	return a;
 	//[front,back,right,left,bottom,top]
-	//alert(allcubies);
 }
 function escapeHtml(unsafe) {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+	return unsafe
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
 }
 function IDtoLayout(num){
 	let copynum = num;
@@ -2151,11 +2447,26 @@ function undoSetup() {
 function moveSetup()
 {
 	if ((mastep > 0 || cstep > 0) && timer.getTime() <= 0) return;
-	if (mastep > 0 && nosavesetupdim.includes(DIM)) {
+	if (comstep > 0) {
+		setDisplay("none", ["reset2_div", "giveup"])
+		comstep--;
+		canMan = true;
+		quickSolve();
+		moves = 0;
+		undo = [];
+		redo = [];
+		arr = [];
+		otherShuffling = true;
+		changeArr(competeshuffle);
+		multiple2("compete");
+		waitStopTurning(false);
+		return;
+	}
+	if ((cstep > 0 || mastep > 0) && (!savesetupdim.includes(DIM) || SIZE > 3 || ["cuboid", "baby"].includes(ma_data.type))) {
 		undoSetup();
 		return;
 	}
- 	if(document.getElementById("s_instruct").innerHTML.includes("In one game of") ||
+	if(document.getElementById("s_instruct").innerHTML.includes("In one game of") ||
 	document.getElementById("s_instruct").innerHTML.includes("Your final"))
 	{
 		CAM = p.createEasyCam(p._renderer);
@@ -2244,19 +2555,29 @@ function stopMoving(){
 }
 function giveUp()
 {
-	if (comstep > 0) {
+	if (MINIMODE == "virtual") {
+		socket.emit("race_win", socket.id, 1)
+	} else if (MINIMODE == "physical") {
+		raceWinner(1);
+		stopMoving();
+		timer.stop();
+		getEl("giveup").style.display = "none";
+	} else if (comstep > 0) {
 		timer.stop();
 		timer.reset();
 		comstep++;
-		if(ao5 == 0) ao5 = ["DNF"];
-		else ao5.push("DNF");
+		if (competedata.data.type != "teamblind") {
+			if(ao5 == 0) ao5 = ["DNF"];
+			else ao5.push("DNF");
+		}
 		socket.emit("solved", room, "DNF");
 		fadeInText(1, "DNF");
 		setTimeout(() => {fadeInText(0, "DNF")}, 400);
 		canMan = false;
-		getEl("giveup").style.display = "none";
-	} else if(m_4step > 0 && m_4step % 2 == 1)
-	{
+		setDisplay("none", ["giveup", "reset2_div", "undo", "redo"])
+		if (competedata.data.type == "teamblind")
+			socket.emit("giveup_blind", room);
+	} else if(m_4step > 0 && m_4step % 2 == 1) {
 		if(giveups > 0.5)
 			giveups--;
 		else
@@ -2297,7 +2618,7 @@ function giveUp()
 	}
 }
 
-function changeTwo()
+function changeTwo(switchstart = true)
 {
 	SIZE = 3;
 	MAXX = 50;
@@ -2305,7 +2626,8 @@ function changeTwo()
 	DIM = 100;
 	DIM3 = 2;
 	DIM4 = 2;
-	localStorage.startcube = 2;
+	if (switchstart)
+		localStorage.startcube = 2;
 	modeData("twobytwo");
 	THREEBYTHREE.class('btn btn-light btn-sm');
 	TWOBYTWO.class('btn btn-warning btn-sm');
@@ -2315,23 +2637,29 @@ function changeTwo()
 	SIZE_SLIDER2.parent("size");
 	SIZE_SLIDER2.style('width', '100px');
 	reSetup();
-	if(MODE == "speed")
+	changeCam(!["speed", "moves", "idmode"].includes(MODE) && !["id"].includes(MINIMODE));
+	if (["speed", "moves"].includes(MODE)) {
+		refreshButtons();
+	}
+	if (MODE == "speed") {
 		speedmode();
+	}
 	if(MODE == "moves")
 		movesmode();
 	if(MODE == "paint")
 		idmode();
-	changeCam(true);
 }
-function changeThree()
+function changeThree(switchstart = true)
 {
+	console.log("Changetree")
 	DIM2 = 50;
 	DIM = 50;
 	SIZE = 3;
 	MAXX = 50;
 	DIM3 = 3;
 	DIM4 = 3;
-	localStorage.startcube = 3;
+	if (switchstart)
+		localStorage.startcube = 3;
 	THREEBYTHREE.class('btn btn-warning btn-sm');
 	TWOBYTWO.class('btn btn-light btn-sm');
 	SIZE_SLIDER2.remove();
@@ -2340,13 +2668,17 @@ function changeThree()
 	SIZE_SLIDER2.parent("size");
 	SIZE_SLIDER2.style('width', '100px');
 	reSetup();
-	if(MODE == "speed")
+	changeCam(!["speed", "moves", "idmode"].includes(MODE) && !["id"].includes(MINIMODE));
+	if (["speed", "moves"].includes(MODE)) {
+		refreshButtons();
+	}
+	if (MODE == "speed") {
 		speedmode();
+	}
 	if(MODE == "moves")
 		movesmode();
 	if(MODE == "paint")
 		idmode();
-	changeCam(true);
 }
 function changeCam(changeinp = true)
 {
@@ -2364,16 +2696,15 @@ function bandageZero(){
 }
 function changeZero()
 {
-	SEL.selected("blue");
-	SEL2.selected("orange");
-	SEL3.selected("white");
-	SEL4.selected("red");
-	SEL5.selected("green");
-	SEL6.selected("yellow");
-	for(let i = 0; i < 27; i++)
-	{
-		CHECK[i].remove();
-	}
+	const colormap = {"g" : "green", "b" : "blue", "r" : "red", "y" : "yellow", "w" : "white", "m" : "magenta", "k" : "black", "o" : "orange"}
+	SEL.selected(colormap[topColor()]);
+	SEL2.selected(colormap[allcubies[12][3]]);
+	SEL3.selected(colormap[allcubies[16][0]]);
+	SEL4.selected(colormap[opposite[allcubies[12][3]]]);
+	SEL5.selected(colormap[opposite[topColor()]]);
+	SEL6.selected(colormap[opposite[allcubies[16][0]]]);
+	console.log(colormap[opposite[allcubies[16][0]]])
+	CHECK.forEach(c => c.checked(true));
 	change9(true);
 }
 function changeFour(){
@@ -2470,6 +2801,11 @@ function change18(dim, b){
 	changeBan(dim, b)
 	CUBE14.style('background-color', "#8ef5ee");
 }
+
+function change21(dim, b) {
+	changeBan(dim, b)
+	SNAKE_EYE.style('background-color', "#8ef5ee");
+}
 function change19(){
 	DIM = 15;
 	DIM2 = 15;
@@ -2479,18 +2815,20 @@ function change19(){
 	refreshButtons();
 	CUBE15.style('background-color', "#8ef5ee");
 }
-function switchSize(s, d = 50, d2 = 50, input = "Normal") {
+function switchSize(s, d = 50, d2 = 50, input = "Normal", d3 = 3, b = []) {
 	DIM2 = d2;
 	DIM = d;
-	DIM3 = 3;
-	DIM4 = 3;
+	DIM3 = d3;
+	DIM4 = d3;
 	changeCam(3)
-	INPUT.value(input);
+	INPUT.value(input == "Middle Slices" ? "Normal" : input);
 	SCRAM.value(input);
 	SIZE = s;
 	MAXX = (SIZE - 1) * 25;
+	bandaged = b
 	reSetup();
 	refreshButtons();
+	console.log("bandaged is ", bandaged)
 }
 function change20(dim, b){
 	changeFive();
@@ -2504,7 +2842,7 @@ function change20(dim, b){
 	CUBE16.style('background-color', "#8ef5ee");
 }
 function changeMod(dx){
-	modnum = (modnum + dx + 3) % 3;
+	modnum = (modnum + dx + 4) % 4;
 	document.getElementById("custom").style.display = modnum == 0 ? "block" : "none"; 
 	document.getElementById("customb").style.display = modnum == 1 ? "block" : "none"; 
 	refreshButtons();
@@ -2527,7 +2865,7 @@ function rightBan(){
 	viewBandage(true);
 
 }
-function setCustomShape() {
+function setCustomShape(initial = false) {
 	// Remove old checkboxes
 	for (let i = 0; i < CHECK.length; i++) {
 		CHECK[i].remove();
@@ -2536,10 +2874,13 @@ function setCustomShape() {
 		CHECKALL[i].remove()
 	}
 
+	let size = SEL7.value()[0];
+
 	// Get parent container
 	const parentElement = document.getElementById("check1");
-	const checkboxesPerRow = SIZE;
-	const totalCheckboxes = SIZE * SIZE * SIZE;
+	const checkboxesPerRow = size;
+	const totalCheckboxes = size * size * size;
+	console.log("TOTAL", totalCheckboxes, size)
 
 	// Clear existing content
 	parentElement.innerHTML = "";
@@ -2547,7 +2888,6 @@ function setCustomShape() {
 	// Create checkboxes and organize them in rows
 	let row;
 	for (let i = 0; i < totalCheckboxes; i++) {
-		if (DIM3 == 2 && [1, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 25].includes(i)) continue;
 		if (i % checkboxesPerRow === 0) {
 			row = document.createElement("div");
 			row.classList.add("checkbox-row");
@@ -2556,33 +2896,37 @@ function setCustomShape() {
 		const checkboxContainer = document.createElement("div");
 		checkboxContainer.classList.add("checkbox-container");
 		CHECK[i] = p.createCheckbox('', true);
+		console.log("HERE");
 		CHECK[i].parent(checkboxContainer); 
+		if (initial && saveshapemod && saveshapemod.length > 0) {
+			CHECK[i].checked(saveshapemod[i]);
+		}
 		row.appendChild(checkboxContainer);
-		const style = ((i % (SIZE * SIZE)) < SIZE && i > SIZE) ? "padding-right: 3px; padding-top: 15px;" : "padding-right: 3px;";
+		const style = ((i % (size * size)) < size && i > size) ? "padding-right: 3px; padding-top: 15px;" : "padding-right: 3px;";
 		CHECK[i].style(style);
-		let layer = DIM3 != 2 ? (Math.floor(i / (SIZE * SIZE)) + 1) : i < 9 ? 1 : 2;
+		let layer = Math.floor(i / (size * size)) + 1;
 		let checkall = false;
-		if ((i % (SIZE * SIZE) == SIZE - 1)) {
+		if ((i % (size * size) == size - 1)) {
 			CHECKALL[layer - 1] = p.createCheckbox(" Layer " + layer, true);
 			CHECKALL[layer - 1].parent(row);
 			CHECKALL[layer - 1].style(style + "padding-left: 30px; line-height: 0;");
 			CHECKALL[layer - 1].changed(() => {
-				let start = Math.floor(i / SIZE / SIZE) * SIZE * SIZE;
-				for (let j = start; j < start + SIZE * SIZE; ++j) {
+				let start = Math.floor(i / size / size) * size * size;
+				for (let j = start; j < start + size * size; ++j) {
 					CHECK[j].checked(CHECKALL[layer - 1].checked());
 					change9();
 				}
 			})
 		}
 
-		if (DIM3 != 2 && i == SIZE * SIZE - 1) {
+		if (size != 2 && i == size * size - 1) {
 			let button = p.createButton("Apply Layer 1 to all");
-            button.parent(row);
-            setButton(button, row, 'btn btn-info', `text-align:center; font-size: 10px; margin-left: 30px; float: right;`, () => {
-				for (let j = SIZE * SIZE; j < SIZE * SIZE * SIZE; ++j) {
-                    CHECK[j].checked(CHECK[j - SIZE * SIZE].checked());
+			button.parent(row);
+			setButton(button, row, 'btn btn-info', `text-align:center; font-size: 10px; margin-left: 30px; float: right;`, () => {
+				for (let j = size * size; j < size * size * size; ++j) {
+					CHECK[j].checked(CHECK[j - size * size].checked());
 					change9();
-                }
+				}
 				// change9();
 			});
 			button.style('margin-top', '-10px');  // This moves the button up by 10px
@@ -2590,8 +2934,8 @@ function setCustomShape() {
 
 		CHECK[i].changed(() => {
 			CHECKALL[layer - 1].checked(false);
-			let start = Math.floor(i / SIZE / SIZE) * SIZE * SIZE;
-			for (let j = start; j < start + SIZE * SIZE; ++j) {
+			let start = Math.floor(i / size / size) * size * size;
+			for (let j = start; j < start + size * size; ++j) {
 				if (CHECK[j].checked()) {
 					CHECKALL[layer - 1].checked(true);
 				}
@@ -2616,13 +2960,13 @@ function change9(bigchange = false)
 		setCustomShape();
 	}
 	let checked = [];
-	for(let i = 0; i < SIZE * SIZE * SIZE; i++)
+	let size = SEL7.value()[0];
+	for(let i = 0; i < size * size * size; i++)
 	{
 		if(!CHECK[i].checked())
 			checked.push(i);
 	}
-	if(DIM3 == 2)
-		checked.push(1, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 22, 23, 25);
+	console.log("CHCKED IS ", checked)
 	DIM[6] = checked; 
 	DIM[7] = DIM3;
 	rotation = CAM.getRotation();
@@ -2682,7 +3026,7 @@ function setInput() {
 		document.getElementById("undo").style.display = "inline";
 		document.getElementById("redo").style.display = "inline";
 		document.getElementById("input2").style.display = "none";
-		if ((MODE == "cube" && !mouseAllowed() && custom == 0) || custom == 1 && !canMouse()) {
+		if ((!mouseAllowed() && custom == 0) || custom == 1 && !canMouse()) {
 			document.getElementById("input2").style.display = "block";
 		}
 		if (SHUFFLE_BTN) SHUFFLE_BTN.html('<i class="bi bi-shuffle"></i>');
@@ -2810,19 +3154,19 @@ function cancelBandage(){
 function allBandaged(){
 	let possible = [];
 	let allbandaged = bandaged.flat();
-	console.log("allbandaged is", allbandaged);
 	let cubies = getOuterCubes();
-	for(let j = 0; j < cubies.length; j++){
-		if(!allbandaged.includes(j) && cubies.includes(j)) possible.push(j);
-	}
+	cubies.forEach((cuby) => {
+		if(!allbandaged.includes(cuby)) possible.push(cuby);
+	})
+	console.log("possible is", possible, "cubies is ", cubies);
 	return possible;
 }
 function randomBandage(){
 	// BANDAGE_SELECT.value("3x3");
 	// changeThree();
 	let numB = parseInt(Math.random()*SIZE)+2;
-	if (special[6] == 2) numB = parseInt(Math.random()*2)+1;
-	if (special[6] == 15) numB = 1;
+	if (shownCubies().length < 27) numB = parseInt(Math.random()*2)+1;
+	if (shownCubies().length < 15) numB = 1;
 	let possible = [];
 	let possible2 = [];
 	bandaged = [];
@@ -2837,6 +3181,7 @@ function randomBandage(){
 		let sizeB = parseInt(Math.random()*size)+2;
 		let rnd = p.random(possible);
 		bandaged[i] = [rnd];
+		console.log("Possible", possible);
 		for(let j = 1; j < sizeB; j++){
 			possible = allBandaged();
 			for(let k = 0; k < possible.length; k++){ //loops through non bandaged selected cubies
@@ -2856,6 +3201,15 @@ function randomBandage(){
 		[BANDAGE_SLOT.value()]: bandaged, 
 		slot: BANDAGE_SLOT.value(), ...bandaged3[BANDAGE_SELECT.value()]
 	  };
+	if (!bandaged3[BANDAGE_SELECT.value()]) {
+		bandaged3[BANDAGE_SELECT.value()] = {
+			[BANDAGE_SLOT.value()]: bandaged, 
+			slot: BANDAGE_SLOT.value(), ...bandaged3[BANDAGE_SELECT.value()]
+		};
+	} else {
+		bandaged3[BANDAGE_SELECT.value()][BANDAGE_SLOT.value()] = bandaged;
+		bandaged3[BANDAGE_SELECT.value()].slot = BANDAGE_SLOT.value();
+	}
 	bandaged2 = [];
 	ban9();
 	b_selectdim[BANDAGE_SELECT.value()]();
@@ -2922,7 +3276,7 @@ function inputPressed(move)
 	}
 	if(move == "y"){
 		rotationx--;
-        if(rotationx == -1) rotationx = 3;
+		if(rotationx == -1) rotationx = 3;
 	}
 	if(move == "x"){
 		rotationz++;
@@ -2930,7 +3284,7 @@ function inputPressed(move)
 	}
 	if(move == "x'"){
 		rotationz--;
-        if(rotationz == -1) rotationz = 3;
+		if(rotationz == -1) rotationz = 3;
 	}
 	if(canMan)
 	{
@@ -2988,6 +3342,24 @@ function Custom2(){
 }
 function Custom()
 {
+	if (!localStorage.saveshapemod) {
+		const colormap = {"g" : "green", "b" : "blue", "r" : "red", "y" : "yellow", "w" : "white", "o" : "orange", "m" : "magenta", "k" : "black"}
+		SEL.selected(colormap[topColor()]);
+		SEL2.selected(colormap[allcubies[12][3]]);
+		SEL3.selected(colormap[allcubies[16][0]]);
+		SEL4.selected(colormap[opposite[allcubies[12][3]]]);
+		SEL5.selected(colormap[opposite[topColor()]]);
+		SEL6.selected(colormap[opposite[allcubies[16][0]]]);
+		console.log(colormap[opposite[allcubies[16][0]]],opposite[allcubies[16][0]])
+	} else {
+		let colors = JSON.parse(localStorage.saveshapemod).colors;
+		SEL.selected(colors[0]);
+		SEL2.selected(colors[1]);
+		SEL3.selected(colors[2]);
+		SEL4.selected(colors[3]);
+		SEL5.selected(colors[4]);
+		SEL6.selected(colors[5]);
+	}
 	custom = 1;
 	document.getElementById("allmodes").style.display = "none";
 	document.getElementById("cube").style.display = "none";
@@ -3121,8 +3493,8 @@ function regular(nocustom){
 		scrambles = saveao5[2];
 		movesarr = saveao5[3];
 	}
-	if (DIM2 != 50 && DIM2 != 100) {
-		startCube()
+	if (DIM2 != 50 && DIM2 != 100 || comstep > 0) {
+		startCube();
 	}
 	document.getElementById("scramble").innerHTML = "N/A";
 	document.getElementById('password').value = '';
@@ -3159,9 +3531,12 @@ function regular(nocustom){
 		"m_high", "link1", "timegone", "reset2_div", "reset3_div", "giveup", "giveup2", "hint", "cube", "custom2", "custom4", "spacetime", "stop_div", "modarrow", "s_bot", 
 		"s_high", "s_RACE", "s_RACE2", "settings1", "loginform", "highscore", "c_INSTRUCT", "c_week", "challengeback", "hotkey1", "s_prac", "s_prac2", "s_image","s_start"
 		,"blind", "overlay", "peeks", "b_win", "b_start", "divider", "beforetime", "marathon","marathon2","ma_buttons","paint","saveposition", "lobby", "creating_match", "waitingroom", "startmatch", "in_match", "continuematch", "com_1v1_div",
-		"com_group_div", "finish_match", "cantmatch", "final_tally", "go!"]);
-	setInnerHTML(["s_INSTRUCT", "s_instruct", "s_instruct2", "s_RACE3", "s_difficulty", "l_message", "lobby_warn"]);
-	[COMPETE_1V1, COMPETE_GROUP].forEach((b) => b && b.style("backgroundColor", ""));
+		"com_group_div", "finish_match", "cantmatch", "final_tally", "go!", "chat-container", "message-input", "chat_instruct",
+		"send-btn", "ss_container", "com_teamblind_div", "competeswitch", "compete_group_container", "peek_container", "blind2",
+		"race_instruct_div", "r_iframe", "r_sliders", "r_physical", "botestimate", "blinddesc", "practice_container", "advanced_container",
+		"deleteban", "compete_select", "competerestore"]);
+	setInnerHTML(["s_INSTRUCT", "s_instruct", "s_instruct2", "s_RACE3", "s_difficulty", "l_message", "lobby_warn", "allmessages", "match_description", "compete_group_container"]);
+	[COMPETE_1V1, COMPETE_GROUP, COMPETE_TEAMBLIND].forEach((b) => b && b.style("backgroundColor", ""));
 	if (ismid) {
 		setDisplay("none", ["or_instruct", "or_instruct2"]);
 	}
@@ -3191,7 +3566,12 @@ function regular(nocustom){
 	m_34step = 0;
 	m_4step = 0;
 	bstep = 0;
+	roundresult = []
+	getEl("r_iframe").src = "about:blank";
+	juststarted = false;
+	isShuffling = false;
 	ma_data.type = "";
+	compete_cube = previouschatid = ""
 	pracmode = "none";
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
 	socket.emit("leave-room", room);
@@ -3253,6 +3633,7 @@ function idmode()
 	// 	regular();
 	// 	return;
 	// }
+	MINIMODE = "id"
 	DIM = DIM2;
 	//reSetup();
 	stopMoving();
@@ -3331,7 +3712,7 @@ function paintit(color, dx = 1) {
 	if (colorindex != 54) {
 		setDisplay("block", ["paint"]);
 		obj = getColoredCuby(colorindex);
-	 	colormap = +Object.entries(mapCuby()).find(([key, value]) => value == obj.cuby)?.[0];
+		colormap = +Object.entries(mapCuby()).find(([key, value]) => value == obj.cuby)?.[0];
 		if (color != "original") {
 			CUBE[obj.cuby].setFaceColor(CUBE[colormap].colors[color], obj.face);
 		} else {
@@ -3396,39 +3777,116 @@ function finishpaint() {
 }
 document.getElementById("compete").onclick = competemode;
 function competemode() {
+	displayPublicRooms();
 	modeData("compete");
 	regular();
-	setDisplay("none", ["test_alg_div", "ID1", "input", "scram", "challengeback", "settings", "timeselect","type3"]);
-	setDisplay("block", ["lobby"]);
+	setDisplay("none", ["mode", "mode2", "mode3", "mode7", "test_alg_div", "ID1", "input", "scram", "challengeback", "settings", "timeselect","type3",
+			"or_instruct", "or_instruct2", "or_instruct4"
+	]);
+	setDisplay("block", ["lobby", "allmodes", "chat-container", "message-input", "chat_instruct", "compete_group_container"]);
+	setDisplay("inline", ["mode4", "mode5", "mode6", "mode8"]);
+	if (isthin) {
+		setDisplay("none", ["cnv_div", "chat_instruct", "chat-container", "competeinput"]);
+	}
+	getEl("send-btn").style.display = "inline-block"; // To show the button
+
 	SCRAM.value("Normal");
 	var elements = document.getElementsByClassName('normal');
 	for(var i=0; i<elements.length; i++) { 
 		elements[i].style.display='none';
 	}
 	MODE = "compete";
+	socket.emit("get-rooms");
 }
 
+function progressUpdate(time = 0) {
+	if (comstep > 0 && competedata.stage == "ingame") {
+		console.log("uploading", isSolved() || timer.getTime() == 0 ? timer.roundedTime() : timer.startTime + (timer.getTime() < 0 ? 15000 : 0))
+		socket.emit("progress-update", room, competeprogress, competedata.data.type == "teamblind" ? (time ? time : competedata.data.time) : isSolved() ? timer.roundedTime() : timer.startTime + (timer.getTime() < 0 ? 15000 : 0), isShuffling ? false : getID());
+	}
+}
 
 socket.on("connect", () => {
 	console.log("Youre are connected with id: ", socket.id)
 });
 
 socket.on("refresh_rooms", (data, r) => {
-	competedata = data;
-	enterLobby(data, r)
+	if (MODE == "compete" || MODE == "competing") {
+		competedata = data;
+		enterLobby(data, r)
+	} else {
+		socket.emit("leave-room", room);
+	}
 });
 
+socket.on("joined_late", (data, r) => {
+	if (MODE == "compete") {
+		saveao5 = [ao5, mo5, scrambles, movesarr];
+		ao5 = [];
+		mo5 = [];
+		scrambles = [];
+		movesarr = [];
+		MODE = "competing";
+		competedata = data;
+		room = r;
+		console.log("I am joined");
+		getEl("in_match").style.display = "block";
+		setDisplay("none", ["lobby", "practice_container"]);
+		setDisplay("inline", ["slider_div", "speed"]);
+		setDisplay("block", ["outertime"]);
+		timer.reset();
+		timer.stop();
+		changeInput();
+		canMan = false;
+		if (data.stage == "ingame") {
+			comstep = 2;
+			giveUp();
+		} else {
+			comstep = 3;
+			competeSolved(data);
+
+		}
+	}
+})
+
+socket.on("room_change", rooms => {
+	competerooms = rooms;
+	displayPublicRooms();
+})
+
 function enterLobby(data, r) {
+	topWhite();
+	if (getEl("creating_match").style.display != "none") {
+		return;
+	}
+	compete_type = data.data.type;
 	setDisplay("none", ["lobby", "in_match", "final_tally"]);
-	setDisplay("block", ["waitingroom"]);
+	setDisplay("inline", ["outertime", "reset_div"]);
+	setDisplay("block", ["cnv_div"]);
+	setDisplay("block", ["waitingroom", "practice_container", "chat_instruct", "chat-container"]);
+	setDisplay("flex", ["competeinput"]);
+	setDisplay(data.data.leader == socket.id ? "inline" : "none", ["editcompete"]);
 	console.log("Refreshed")
 	room = r;
 	getEl("waitingroomid").innerHTML = "Joined room " + room;
-	setDisplay((data.userids.length > 1 || data.data.type == "group") && data.data.leader == socket.id ? "block" : "none", ["startmatch"]);
+	setDisplay((data.userids.length > 1 || data.data.type == "group") && data.data.leader == socket.id && getEl("creating_match").style.display == "none" ? "block" : "none", ["startmatch"]);
 	setDisplay((data.userids.length > 1 || data.data.type == "group") && data.data.leader == socket.id ? "none" : "block", ["cantmatch"]);
 	getEl("cantmatch").innerHTML = 
-			`${data.data.leader != socket.id ? "Waiting for host to start match." : "Exactly 2 players are required to start."}`
+			`${data.data.leader != socket.id ? "Waiting for host to start match." : "Waiting for opponent."}`
+
 	competedata = data;
+	let cubenum = 1
+	if (competedata.data.type != "1v1" || socket.id == competedata.data.leader) {
+		cubenum = 0;
+	}
+	if (Array.isArray(competedata.data.dims) && competedata.data.dims[0]
+		&& compete_cube != competedata.data.dims[0] && competedata.data.dims[0][cubenum]) {
+		PRACTICE_SEL.selected(competedata.data.dims[0][cubenum]);
+		b_selectdim[competedata.data.dims[0][cubenum]]();
+		compete_cube = competedata.data.dims[0];
+		getEl("keymap").style.display = "none";
+	}
+
 	let str = ""
 	data.userids.forEach((id, x) => {
 		str += (x + 1) + ") "
@@ -3442,35 +3900,77 @@ function enterLobby(data, r) {
 		str += `<br>`;
 	})
 	getEl("waitingroomdata").innerHTML = str;
+	getEl("competerules2").innerHTML = competeText();
+	const title = {
+		"1v1": "2 Player Battle Rules",
+		"group": "Group Battle Rules",
+		"teamblind": "Team Blind Rules"
+	}
+	getEl("competeruletitle").innerHTML = title[data.data.type];
 	str = ""
-	str = `Total Rounds: ${data.data.dims.length} <br>`;
+	str = `<h6 style = "margin-top:20px">Total Rounds: ${data.data.dims.length} </h6>`;
 	if (data.data.type == "1v1") {
 		data.data.dims.forEach((cube, x) => {
 			str += `Round ${x + 1})`
+			if (data.data.shufflearr.length > 0) {
+				str += `<br>&ensp;`
+			}
 			if (data.data.leader == socket.id) {
 				str += `${COMPETE_YOU} ${data.names[socket.id]}: ${cube[0]}</b>, `;
+				if (data.data.shufflearr.length > 0) {
+					str += `Turning: ${data.data.shufflearr[x][0]}<br>&ensp;`;
+				}
 				str += ` ${data.userids.length == 2 ? (data.userids[0] == socket.id ? data.names[data.userids[1]] : data.names[data.userids[0]]): "opponent"}: ${cube[1]}`;
+				if (data.data.shufflearr.length > 0) {
+					str += `, Turning: ${data.data.shufflearr[x][1]}&ensp;`;
+				}
 				str += "<br>";
 			} else {
 				str += ` ${data.userids.length == 2 ? (data.userids[0] == socket.id ? data.names[data.userids[1]] : data.names[data.userids[0]]): "opponent"}: ${cube[0]}, `;
+				if (data.data.shufflearr.length > 0) {
+					str += `Turning: ${data.data.shufflearr[x][0]}<br>&ensp;`;
+				}
 				str += `${COMPETE_YOU} ${data.names[socket.id]}: ${cube[1]}</b>`;
+				if (data.data.shufflearr.length > 0) {
+					str += `, Turning: ${data.data.shufflearr[x][1]}&ensp;`;
+				}
 				str += "<br>";
 			}
 		})
 	} else {
 		data.data.dims.forEach((cube, x) => {
-			str += `Round ${x + 1}): ${cube[0]}<br>`
+			str += `Round ${x + 1}): ${cube[0]}`
+			if (data.data.shufflearr.length > 0) {
+				str += `, Turning: ${data.data.shufflearr[x]}`;
+			}
+			str += "<br>";
 		})
+	}
+	if (data.data.type == "teamblind") {
+		getEl("blinddesc").style.display = "block";
+		getEl("blinddesc").innerHTML = `${socket.id == competedata.userids[competedata.data.startblind] ? "You will start blindfolded." : "You will start with vision."}`;
+	} else {
+		getEl("blinddesc").style.display = "none";
+		str += `<h6 style = "margin-top:20px">Inspection: ${data.data.inspection ? "15 seconds" : "None"}</h6>`;
 	}
 	getEl("competerules").innerHTML = str;
 }
-function createMatch() {
-	setDisplay("none", ["lobby"]);
+function createMatch(newmatch = true) {
+	setDisplay("none", ["lobby", "waitingroom", "startmatch", "outertime", "practice_container"]);
 	setDisplay("block", ["creating_match"]);
+	if (newmatch) {
+		setDisplay("none", ["round_length"]);
+		compete_type = "";
+	}
 }
 
 function finishMatch() {
 	let dimarr = competeDims();
+	let shufflearr = false;
+	if (COMPETE_ADVANCED.checked()) {
+		shufflearr = dimarr.filter((_, index) => index % 2 != 0);
+		dimarr = dimarr.filter((_, index) => index % 2 == 0);
+	}
 	let numrounds = getEl("compete_rounds").value;
 	if (getEl("compete_rounds").value < 1 || isNaN(numrounds)) {
 		alert("Please enter an integer greater than 1");
@@ -3478,12 +3978,19 @@ function finishMatch() {
 	}
 	setDisplay("none", ["creating_match"]);
 	setDisplay("block", ["waitingroom"]);
-	getEl("waitingroomid").innerHTML = "Attempting to Create Room";
-	socket.emit("create-room", {rounds: 3, dims: dimarr, type: compete_type, leader: socket.id}, localStorage.username);
+	let senddata = {rounds: dimarr.length, dims: dimarr, type: compete_type, leader: socket.id, shufflearr: shufflearr,
+		visibility: getEl("private").checked ? "private" : "public", orpos : allcubies, 
+		startblind: getEl("startblind1").checked ? 0 : 1, inspection: COMPETE_INSPECTION.checked()};
+	if (room == 0) {
+		getEl("waitingroomid").innerHTML = "Attempting to Create Room";
+		socket.emit("create-room", senddata, localStorage.username);
+	} else {
+		getEl("waitingroomid").innerHTML = "Attempting to Edit Room";
+		socket.emit("edit-room", room, senddata);
+	}
 }
 
-function joinRoom() {
-	const room = getEl("join_input").value;
+function joinRoom(room = getEl("join_input").value) {
 	socket.emit("join-room", room, localStorage.username, (err) => {
 		successSQL(err, "lobby_warn");
 	})
@@ -3501,8 +4008,8 @@ function competeAgain() {
 
 socket.on("started-match", (data, scramble) => {
 	MODE = "competing";
-	setDisplay("none", ["waitingroom", "startmatch"]);
-	setDisplay("inline", ["in_match", "speed", "input", "slider_div", "undo", "redo","outertime", "time", "giveup"]);
+	setDisplay("none", ["waitingroom", "startmatch", "practice_container"]);
+	setDisplay("inline", ["in_match", "speed", "slider_div", "undo", "redo","outertime", "time"]);
 	setDisplay("block", ["times_par"])
 	changeInput();
 	getEl("match_INSTRUCT").innerHTML = "Solve the cube faster than your opponent!";
@@ -3518,21 +4025,51 @@ socket.on("started-match", (data, scramble) => {
 socket.on("next-match", (data, scramble) => startRound(data, scramble))
 
 function startRound(data, scramble) {
-	setDisplay("none", ["continuematch", "waitingmatch"])
-	setDisplay("inline", ["giveup"]);
+	if (MODE != "competing") {
+		return;
+	}
+	setDisplay("none", ["continuematch", "waitingmatch", "reset_div", "shuffle_div", "reset_div"])
+	setDisplay("block", ["cnv_div", "chat-container", "chat_instruct"]);
+	setDisplay("flex", ["competeinput"]);
+	getEl("input").disabled = true;
+	getEl("ss_container").src = "";
 	canMan = true;
 	getEl("match_INSTRUCT").innerHTML = "Solve the cube faster than your opponent!";
 	getEl("match_INSTRUCT3").innerHTML = "";
 	getEl("match_INSTRUCT4").innerHTML = "";
+	bandaged = [];
+	reSetup();
 	competedata = data;
-	if (data.data.type == "group" || data.data.leader == socket.id)
+	if (data.data.type != "1v1" || data.data.leader == socket.id) {
 		b_selectdim[data.data.dims[data.round][0]]();
-	else
+		if (data.data.shufflearr.length > 0) {
+			if (competedata.data.type == "1v1" && data.data.shufflearr[data.round][0] != "Default")
+				INPUT.selected(data.data.shufflearr[data.round][0]);
+			else if (data.data.shufflearr[data.round] != "Default")
+				INPUT.selected(data.data.shufflearr[data.round]);
+		}
+	} else {
 		b_selectdim[data.data.dims[data.round][1]]();
+		if (data.data.shufflearr.length > 0 && data.data.shufflearr[data.round][1] != "Default") {
+			INPUT.selected(data.data.shufflearr[data.round][1]);
+		}
+	}
+	progressUpdate();
+	SCRAM.selected(INPUT.value());
 	setTimeout(() => {
+		changeInput();
+		setDisplay("block", ["input"]);
+		if (MODE != "competing") {
+			return;
+		}
 		INPUT.attribute('disabled', true);
 		competeTimes(data);
+		isShuffling = true;
+		if (data.data.type == "teamblind") {
+			quickSolve(data.data.orpos);
+		}
 		if (scramble) {
+			competeshuffle = scramble;
 			changeArr(scramble);
 			multiple2("scramble");
 		} else {
@@ -3540,60 +4077,110 @@ function startRound(data, scramble) {
 		}
 		competeprogress = 0;
 		canMan = false;
-		waitStopTurning(true);
-	}, 10);
+		progressUpdate();
+		if (!data.data.inspection && data.data.type != "teamblind") {
+			waitStopTurning(false, "wtev", true)
+		} else {
+			waitStopTurning(data.data.type != "teamblind");
+		}
+	}, 500);
 }
 
-socket.on("someone-solved", (data) => competeTimes(data));
+socket.on("update-data", (data) => {competedata = data;});
+
+function blindTime() {
+	if (competedata.data.time == "DNF") {
+		return "DNF";
+	}
+	if (Math.abs(Date.now() - competedata.data.time) < competedata.data.time) {
+		return Math.round((Date.now() - competedata.data.time) / 10)/100.0;
+	}
+}
+
+function cTime(id) {
+	if (competedata.solved[id]) {
+		return competedata.solved[id];
+	}
+	if (Math.abs(Date.now() - competedata.times[id]) < competedata.times[id]) {
+		return Math.round((Date.now() - competedata.times[id]) / 10)/100.0;
+	}
+	return competedata.times[id];
+}
 
 function competeTimes(data, end = false) {
-	competedata = data;
-	let strarr = [];
-	data.userids.forEach((id) => {
-		if (!data.solved[id]) strarr.push([id, data.progress[id] ?? 0, data.times[id] ?? 0])
-		else strarr.push([id, data.progress[id] ?? 0, data.solved[id]])
-	});
-	strarr.sort((a, b) => {
-		if (a[1] != b[1]) {
-			return b[1] - a[1];
-		}
-		if (a[2] == "DNF") a[2] = DNF;
-		if (b[2] == "DNF") b[2] = DNF;
-		if (a[2] != b[2]) return a[2] - b[2];
-		let copya = a[2];
-		let copyb = b[2];
-		if (a[0] == socket.id) copya--;
-		if (b[0] == socket.id) copyb--;
-		return copya - copyb;
-	});
-	let str = "";
-	let rank = 1;
-	for (let i = 0; i < strarr.length; ++i) {
-		if (strarr[i][0] == socket.id) {
-			str += COMPETE_YOU;
-		}
-		if (i == 0 || strarr[i][2] != strarr[i - 1][2]) {
-			rank = (i + 1);
-		}
-		str += `${rank}) `;
-		str += data.names[strarr[i][0]];
-		if (!end) {
-			str += ", progress: " + strarr[i][1] + "%";
-		}
-		str += ", time: " + (strarr[i][2] >= DNF ? "DNF" : strarr[i][2]) + "s";
-		// if (rank == 1 && end) {
-		// 	str += " 🔥";
-		// }
-		if (strarr[i][0] == socket.id) {
-			str += `</b>`;
-		}
-		str += "<br>";
+	if (MODE != "competing" || (competedata.data.type == "teamblind" && moves > 0 && !timer.isRunning)) {
+		return;
 	}
-	getEl("match_INSTRUCT2").innerHTML = str;
-	getEl("match_TITLE").innerHTML = `Round ${data.round + 1}`;
+	competedata = data;
+	if (["1v1", "group"].includes(competedata.data.type)) {
+		let strarr = [];
+		data.userids.forEach((id) => {
+			if (!data.solved[id]) strarr.push([id, data.progress[id] ?? 0, cTime(id) ?? 0])
+			else strarr.push([id, data.progress[id] ?? 0, data.solved[id]])
+		});
+		strarr.sort((a, b) => {
+			if (a[1] != b[1]) {
+				return b[1] - a[1];
+			}
+			if (a[2] == "DNF") a[2] = DNF;
+			if (b[2] == "DNF") b[2] = DNF;
+			if (a[2] != b[2]) return a[2] - b[2];
+			let copya = a[2];
+			let copyb = b[2];
+			if (a[0] == socket.id) copya--;
+			if (b[0] == socket.id) copyb--;
+			return copya - copyb;
+		});
+		for (let i = 0; i < strarr.length; ++i) {
+			if (strarr[i][2] == "DNF") {
+				strarr[i][2] = DNF;
+			}
+		}
+		let str = "";
+		let rank = 1;
+		console.log(strarr)
+		for (let i = 0; i < strarr.length; ++i) {
+			if (strarr[i][0] == socket.id) {
+				str += COMPETE_YOU;
+			}
+			if (i == 0 || (strarr[i][2] != strarr[i - 1][2] || (strarr[i][1] != strarr[i - 1][1] && !end))) {
+				rank = (i + 1);
+			}
+			str += `${rank}) `;
+			str += data.names[strarr[i][0]];
+			if (!end) {
+				str += ", progress: " + strarr[i][1] + "%";
+			}
+			str += ", time: " + (strarr[i][2] >= DNF || strarr[i][2] == "DNF" ? "DNF" : (strarr[i][2] + "s"));
+			if (strarr[i][0] == socket.id) {
+				str += `</b>`;
+			}
+			str += "<br>";
+		}
+		getEl("match_INSTRUCT2").innerHTML = str;
+		getEl("match_TITLE").innerHTML = `Round ${data.round + 1}`;
+	} else if (["teamblind"].includes(data.data.type)) {
+		// console.log(data, data.data, data.data.blinded, socket.id)
+		getEl("compete_group_container").style.display = "block";
+		getEl("compete_group_container").innerHTML = "<b style = 'font-size: 20px;'>" + (data.data.blinded == socket.id ? (blindTime() == 0 ? "You will start blindfolded 🕶️" : `You are blindfolded 🕶️`) : `You have vision 👁️`) + "</b> <br>";
+		getEl("compete_group_container").innerHTML += data.data.blinded == socket.id ? (blindTime() == 0 ? "<span style = 'color:green'>Turning enabled, blinding will start after first turn</span>" : "<span style = 'color:green'>Turning enabled</span>")
+				: `<span style = 'color:red'>Turning disabled, only opponent ${timer.getTime() == 0 ? "(blinded after first turn)" : "(blinded)"} can turn.</span>`;
+		getEl("match_TITLE").innerHTML = ""
+		getEl("match_INSTRUCT").innerHTML = getEl("match_INSTRUCT2").innerHTML = "";
+		if (data.data.blinded != socket.id) {
+			console.log(data.data.posid, data.data.startblind);
+			if (!isShuffling && data.data.posid) {
+				quickSolve(IDtoReal(IDtoLayout(decode(data.data.posid))))
+			}
+		}
+		getEl("times_par").style.display = "none";
+	}
 }
 
 function competePoints(data, el = "match_INSTRUCT4") {
+	if (MODE != "competing") {
+		return;
+	}
 	competedata = data;
 	compete_alltimes = [];
 	let strarr = [];
@@ -3635,32 +4222,59 @@ function competePoints(data, el = "match_INSTRUCT4") {
 	return myrank;
 }
 
-socket.on("all-solved", (data) => {
+socket.on("all-solved", data => competeSolved(data));
+
+function competeSolved(data) {
+	if (MODE != "competing") {
+		return;
+	}
 	canMan = false;
 	competedata = data;
-	console.log("DATA IS", data)
-	getEl("match_INSTRUCT").innerHTML = "Round " + (data.round + 1) + " Final Times";
-	getEl("match_INSTRUCT3").innerHTML = "Overall Points Ranking";
-	competeTimes(data, true);
-	competePoints(data);
+	if (data.data.type == "teamblind") {
+		toggleOverlay(false);
+		getEl("competeswitch").style.display = "none";
+		getEl("compete_group_container").style.display = "none";
+		let blindtime = data.data.time;
+		getEl("match_INSTRUCT2").innerHTML = "Time: " + blindtime;
+		if (blindTime() == "DNF") {
+			ao5 = ["DNF"];
+		}
+		timer.stop();
+		if (blindTime() != "DNF") {
+			getEl("match_TITLE").innerHTML = "You solved the cube!!!";
+			getEl("match_INSTRUCT").innerHTML = "Teamwork makes the dream work :D";
+		} else {
+			getEl("match_TITLE").innerHTML = "You gave up";
+			getEl("match_INSTRUCT").innerHTML = "Try again?";
+		}
+	} else {
+		getEl("match_INSTRUCT").innerHTML = "Round " + (data.round + 1) + " Final Times";
+		getEl("match_INSTRUCT3").innerHTML = "Overall Points Ranking";
+		getEl("ss_container").style.display = "none";
+		setDisplay("none", ["giveup", "reset2_div", "undo", "redo"])
+		competeTimes(data, true);
+		competePoints(data);
+	}
 	if (data.data.leader == socket.id || data.round >= competedata.data.dims.length - 1) {
 		setDisplay("block", ["continuematch"]);
-		setDisplay("none", ["waitingmatch"]);
+		setDisplay("none", ["waitingmatch", "ss_container"]);
 	} else {
 		setDisplay("block", ["waitingmatch"]);
 	}
 	CONTINUEMATCH.html(data.round < competedata.data.dims.length - 1 ? "Next Round" : "Final Tally")
-});
+}
 
 function continueMatch() {
+	if (MODE != "competing") {
+		return;
+	}
 	setDisplay("none", ["continuematch"]);
-	setDisplay("inline", ["giveup"]);
 	if (competedata.round < competedata.data.dims.length - 1) {
 		console.log("emitting")
 		socket.emit("next-round", room);
 	} else {
-		setDisplay("none", ["in_match", "keymap"]);
-		setDisplay("none", ["in_match", "keymap"]);
+		setDisplay("none", ["in_match", "keymap", "input2"]);
+		setDisplay("none", ["in_match", "keymap", "input2"]);
 		SCRAM.value("Normal");
 		var elements = document.getElementsByClassName('normal');
 		for (var i = 0; i < elements.length; i++) {
@@ -3670,7 +4284,9 @@ function continueMatch() {
 		let myrank = competePoints(competedata, "final_points");
 		getEl("match_rank").innerHTML = `You ranked #${myrank}. Good job!`;
 		setDisplay("block", ["final_tally"]);
-		
+		setDisplay(competedata.data.type == "teamblind" ? "block" : "none", ["teamblind_leaderboard"]);
+		setDisplay(competedata.data.type != "teamblind" ? "block" : "none", ["final_leaderboard"]);
+		getEl("teamblind_times").innerHTML = `Final Time: ${competedata.data.time}`;
 		let minarr = [];
 		competedata.solvedarr.forEach((timeobj) => {
 			let min = DNF;
@@ -3703,7 +4319,7 @@ function continueMatch() {
 			
 			competedata.solvedarr.forEach((timeobj, i) => {
 				let timeStyle = minarr[i] == timeobj[arr[1]] ? "color: green;" : "";
-				str += `<td style="text-align: center; white-space: nowrap; padding: 0 10px;"><span style="${timeStyle}">${timeobj[arr[1]]}</span></td>`;
+				str += `<td style="text-align: center; white-space: nowrap; padding: 0 10px;"><span style="${timeStyle}">${timeobj[arr[1]] ?? "-"}</span></td>`;
 			});
 			str += `</tr>`;
 		});
@@ -3715,109 +4331,355 @@ function continueMatch() {
 	
 	}
 }
+
 function competeSettings(num = compete_type) {
-    compete_type = num;
-    getEl("com_1v1_div").style.display = num == "1v1" ? "block" : "none";
-    getEl("com_group_div").style.display = num == "1v1" ? "none" : "block";
+	setDisplay("inline", ["undo", "redo", "shuffle_div", "reset_div", "competerestore"]);
+	if (num == "1v1" && compete_type == "group" && competedata.userids && competedata.userids.length > 2) {
+		alert("Cannot turn group compete into 1v1 match.");
+		return;
+	}
+	compete_type = num;
+	getEl("com_1v1_div").style.display = num == "1v1" ? "block" : "none";
+	getEl("com_group_div").style.display = num == "group" ? "block" : "none";
+	getEl("com_teamblind_div").style.display = num == "teamblind" ? "block" : "none";
+	setDisplay(num != "teamblind" ? "block" : "none", ["advanced_container"]);
 	console.log(num);
-    COMPETE_1V1.style("backgroundColor", num == "1v1" ? "#00488F" : "");
-    COMPETE_GROUP.style("backgroundColor", num != "1v1" ? "#00488F" : "");
-    getEl("finish_match").style.display = "block";
 
-    let container = document.getElementById(num == "1v1" ? "1v1_container" : "group_container");
-    container.innerHTML = "";
-    container.style.display = "block";
+	COMPETE_1V1.style("backgroundColor", num == "1v1" ? "#00488F" : "");
+	COMPETE_GROUP.style("backgroundColor", num == "group" ? "#00488F" : "");
+	COMPETE_TEAMBLIND.style("backgroundColor", num == "teamblind" ? "#00488F" : "");
 
-    const createEl = (tag, text = "", styles = {}) => {
-        let el = document.createElement(tag);
-        if (text) el.textContent = text;
-        Object.assign(el.style, styles);
-        return el;
-    };
+	getEl("finish_match").style.display = "block";
+	getEl("match_description").innerHTML = competeText();
+	
+	getEl("round_length").style.display = ["1v1", "group"].includes(num) ? "block" : "none";
 
-    const flexRow = { display: "flex", width: "400px", gap: "10px", alignItems: "center", marginBottom: "10px" };
+	let container = document.getElementById(num == "1v1" ? "1v1_container" : "group_container");
+	container.innerHTML = "";
+	container.style.display = "block";
 
-    let rows = [];
+	const createEl = (tag, text = "", styles = {}) => {
+		let el = document.createElement(tag);
+		if (text) el.textContent = text;
+		Object.assign(el.style, styles);
+		return el;
+	};
 
-    if (num == "1v1") {
-        let headerRow = createEl("div", "", flexRow);
-        headerRow.append(
-            createEl("span", "", { width: "80px" }), 
-            createEl("span", "You", { flex: "1", textAlign: "left" }), 
-            createEl("span", "Opponent", { flex: "1", textAlign: "left" }),
-            createEl("span", "", { width: "120px" }) // Extra column
-        );
-        container.appendChild(headerRow);
-    }
+	const flexRow = { display: "flex", width: num == "1v1" ? "450px" : "350px", gap: "10px", alignItems: "center", marginBottom: "10px" };
+	const columnStyle = { display: "flex", flexDirection: "column", gap: "5px", flex: "1" };
 
-	const alldims = ["3x3", "2x2",  "1x2x3", "1x3x3", "2x2x3", "2x2x4", "3x3x2", "3x3x4", "3x3x5"];
-    for (let i = 0; i < getEl("compete_rounds").value; i++) {
-        let row = createEl("div", "", flexRow);
-        let label = createEl("span", `Round ${i + 1}`, { width: "80px" });
-        let select1 = createEl("select", "", { flex: "1" });
-       	alldims.forEach(text => select1.appendChild(createEl("option", text)));
-        row.append(label, select1);
-        
-        let select2 = null;
-        if (num == "1v1") {
-            select2 = createEl("select", "", { flex: "1" });
-            alldims.forEach(text => select2.appendChild(createEl("option", text)));
-            row.append(select2);
-        }
-        
-        let extraColumn = createEl("span", "", { width: "120px" });
-        if (i === 0) {
-            let applyButton = document.createElement("button");
-            applyButton.textContent = "Apply row to all";
-            applyButton.classList.add("btn", "btn-secondary");
-            applyButton.style.marginLeft = "10px";
-			applyButton.style.fontSize = "14px";
-            applyButton.onclick = () => {
-                for (let j = 1; j < rows.length; j++) {
-                    rows[j].select1.value = rows[0].select1.value;
-                    if (num == "1v1" && rows[j].select2) {
-                        rows[j].select2.value = rows[0].select2.value;
-                    }
-                }
-            };
-            extraColumn.appendChild(applyButton);
-        }
-        row.append(extraColumn);
-        
-        container.appendChild(row);
-        rows.push({ select1, select2 });
-    }
+	let rows = [];
+
+	if (num == "1v1") {
+		let headerRow = createEl("div", "", flexRow);
+		headerRow.append(
+			createEl("span", "", { width: "80px" }),
+			createEl("span", "You", { flex: "1", textAlign: "left" }),
+			createEl("span", "Opponent", { flex: "1", textAlign: "left" }),
+			createEl("span", "", { width: "120px" }) // Extra column
+		);
+		container.appendChild(headerRow);
+	}
+
+	const alldims = ["3x3", "2x2", "4x4", "5x5", "1x2x2", "1x2x3", "1x3x3", "1x4x4", "1x5x5", "2x2x3", "2x2x4", 
+		"2x3x4", "3x3x2", "3x3x4", "3x3x5", "Plus Lite", "3x3x2 Plus Cube", "Plus Cube", "4x4 Plus Cube", "Jank 2x2", "Xmas 2x2", "Xmas 3x3", 
+		"Sandwich 2x2", "Sandwich", "Earth Cube", "Bandaged 2x2", "Snake Eyes", "Cube Bandage", "Slice Bandage"];
+	const optionarr = ["Default", "3x3x2", "Double Turns", "Gearcube"]; // Example options
+
+	for (let i = 0; i < getEl("compete_rounds").value; i++) {
+		let row = createEl("div", "", flexRow);
+		let label = createEl("span", `${isthin ? "R" : "Round "}${i + 1}  ${COMPETE_ADVANCED.checked() && !isthin ? "Turning:" : ""}`, { width: (isthin ? 20 : 80) + "px" });
+
+		// Player 1 Container
+		let cubeContainer = createEl("div", "", columnStyle);
+		let select1 = createEl("select", "", { width: "100%" });
+		select1.onmousedown = (event) => {
+			event.preventDefault(); // Prevents the dropdown from opening
+		};
+		alldims.forEach(text => select1.appendChild(createEl("option", text)));
+		if (compete_dims.length > 0 && compete_dims[i] && compete_dims[i][0]) {
+			select1.value = compete_dims[i][0];
+		}
+
+		let optionSelect1;
+		optionSelect1 = createEl("select", "", { width: "100%" });
+		optionarr.forEach(text => optionSelect1.appendChild(createEl("option", text)));
+		if (compete_shufflearr.length > 0 && compete_shufflearr[i] && compete_shufflearr[i][0]) {
+			optionSelect1.value = compete_shufflearr[i][0];
+		}
+
+		select1.addEventListener("click", () => {
+			setDisplay("none", ["creating_match"]);
+			setDisplay("block", ["compete_select"]);
+			competeSelect(i, select1, num == "1v1" ? "your " : "");
+		});
+		
+
+		if (COMPETE_ADVANCED.checked()) {
+			cubeContainer.append(select1, optionSelect1);
+		} else {
+			cubeContainer.append(select1);
+		}
+		row.append(label, cubeContainer);
+
+		let select2 = null, optionSelect2 = null;
+		if (num == "1v1") {
+			let cubeContainer2 = createEl("div", "", columnStyle);
+			select2 = createEl("select", "", { width: "100%" });
+			alldims.forEach(text => select2.appendChild(createEl("option", text)));
+			if (compete_dims.length > 0 && compete_dims[i] && compete_dims[i][1]) {
+				select2.value = compete_dims[i][1];
+			}
+
+			select2.addEventListener("click", () => {
+				setDisplay("none", ["creating_match"]);
+				setDisplay("block", ["compete_select"]);
+				competeSelect(i, select2, "opponent ");
+			});
+			select2.onmousedown = (event) => {
+				event.preventDefault(); // Prevents the dropdown from opening
+			};
+
+			optionSelect2 = createEl("select", "", { width: "100%" });
+			optionarr.forEach(text => optionSelect2.appendChild(createEl("option", text)));
+			if (compete_shufflearr.length > 0 && compete_shufflearr[i] && compete_shufflearr[i][1]) {
+				optionSelect2.value = compete_shufflearr[i][1];
+			}
+			if (COMPETE_ADVANCED.checked()) {
+				cubeContainer2.append(select2, optionSelect2);
+			} else {
+				cubeContainer2.append(select2);
+			}
+			row.append(cubeContainer2);
+		}
+
+		let extraColumn = createEl("span", "", { width: "120px" });
+		if (i === 0) {
+			let applyButton = document.createElement("button");
+			applyButton.textContent = "Apply row to all";
+			applyButton.classList.add("btn", "btn-secondary");
+			applyButton.style.fontSize = "10px";
+			applyButton.style.paddingLeft = "6px";
+			applyButton.style.paddingRight = "6px";
+			applyButton.onclick = () => {
+				for (let j = 1; j < rows.length; j++) {
+					rows[j].select1.value = rows[0].select1.value;
+					if (COMPETE_ADVANCED.checked())
+						rows[j].optionSelect1.value = rows[0].optionSelect1.value;
+					if (num == "1v1" && rows[j].select2) {
+						rows[j].select2.value = rows[0].select2.value;
+						if (COMPETE_ADVANCED.checked())
+							rows[j].optionSelect2.value = rows[0].optionSelect2.value;
+					}
+				}
+			};
+			getEl("competerestore").onclick = () => {
+				for (let j = 0; j < rows.length; j++) {
+					rows[j].select1.value = "3x3";
+					if (COMPETE_ADVANCED.checked())
+						rows[j].optionSelect1.value = "Default";
+					if (num == "1v1" && rows[j].select2) {
+						rows[j].select2.value = "3x3";
+						if (COMPETE_ADVANCED.checked())
+							rows[j].optionSelect2.value = "Default";
+					}
+					TEAMBLIND_SEL.selected("3x3");
+				}
+			}
+			extraColumn.appendChild(applyButton);
+		}
+		row.append(extraColumn);
+
+		container.appendChild(row);
+		
+		if (COMPETE_ADVANCED.checked()) {
+			rows.push({ select1, optionSelect1, select2, optionSelect2 });
+		} else {
+			rows.push({ select1, select2 });
+		}
+	}
 }
 
+function competeSelect(round, select, text) {
+	getEl("compete_select_title").innerHTML = `Select ${text}cube for round ` + (round + 1);
+	competeSelectButtons();
+	focused_select = select;
+}
+
+function competeSelectButtons() {
+	competesel_buttons.forEach((b, i) => {
+		b.style("backgroundColor", i == compete_modnum ? "#00488F" : "");
+	})
+	let selected = cubetypenames[compete_modnum];
+	let i = 0; 
+	competedim_buttons.forEach((b) => {
+		let shown = ((DIMS_OBJ[b.html()].type.includes(selected) || 
+			selected == "All")) && b.html().includes(getEl("compete_search").value);
+		b.style('display', shown ? "block" : "none");
+		const NUM_COLS = isMobile() && isthin ? 2 : 3
+		if (shown) {
+			b.parent(`compete_col${i % NUM_COLS + 1}`);
+			++i;
+		}
+	});
+
+}
+
+function finishCompeteSelect(dim) {
+	focused_select.value = dim;
+	setDisplay("block", ["creating_match"]);
+	b_selectdim[dim]();
+	setDisplay("none", ["compete_select", "keymap", "input2"]);
+}
+
+function displayPublicRooms() {
+	let container = document.getElementById("public_rooms");  
+	container.innerHTML = ""; // Clear previous content
+
+	let hasRooms = false;
+	let totalrooms = 0;
+	for (let room in competerooms) {
+		if (competerooms[room].data.visibility === "public" && competerooms[room].stage === "lobby"
+			&& !(competerooms[room].data.type != "group" && competerooms[room].userids.length >= 2)) {
+			totalrooms++;
+			hasRooms = true;
+
+			let roomId = Number(room); // Ensure room is treated as a number
+
+			// Create room wrapper
+			let roomDiv = document.createElement("div");
+			roomDiv.style.display = "flex";  // Use flexbox
+			roomDiv.style.alignItems = "center"; // Align text and button
+			roomDiv.style.gap = "6px"; // Space between text and button
+			roomDiv.style.marginBottom = "5px"; // Add space between rooms
+			roomDiv.style.marginTop = "10px"; // Add space between rooms
+
+			// Room title
+			let roomTitle = document.createElement("b");
+			roomTitle.textContent = `Room ${roomId}`;
+
+			// Create the button
+			let button = document.createElement("button");
+			button.className = "btn btn-secondary";
+			button.style = "padding: 2px 6px; font-size: 12px;";
+			button.textContent = "Join";
+
+			// Attach event listener properly
+			button.addEventListener("mousedown", function () {
+				console.log(`Joining Room ${roomId}`); // Debugging
+				joinRoom(roomId);
+			});
+
+			// Append title and button in the same line
+			roomDiv.appendChild(roomTitle);
+			roomDiv.appendChild(button);
+
+			// Room details
+			let roomDetails = document.createElement("div");
+			const types = {
+				"1v1" : "2 Player Battle",
+				"group" : "Group Battle",
+				"teamblind" : "Team Blind"
+			}
+			roomDetails.innerHTML = `&emsp;Type: ${types[competerooms[room].data.type]}<br>
+				&emsp;Rounds: ${competerooms[room].data.dims.length}<br>`;
+
+			// Generate cube info
+			let cubes = "";
+			competerooms[room].data.dims.forEach((cube, i) => {
+				if (i == 5) {
+					cubes += ".....";
+					return;
+				}
+				if ( i > 5) return;
+				cubes += `${cube[cube.length - 1]}${i < competerooms[room].data.dims.length - 1 ? "," : ""} `;
+			})
+			roomDetails.innerHTML += `&emsp;Cubes: ${cubes}<br>`;
+
+			container.appendChild(roomDiv);
+			container.appendChild(roomDetails);
+		}
+	}
+	getEl("public_scroll").style.display = totalrooms >= 4 ? "block" : "none";
+	// If no rooms exist, show message
+	if (!hasRooms) {
+		container.innerHTML = "No public rooms found.";
+	}
+}
+
+
 function getSelectedValues(containerId, rows, cols) {
-    let container = document.getElementById(containerId);
-    let selects = container.getElementsByTagName("select");
-    let result = [];
+	let container = document.getElementById(containerId);
+	let selects = container.getElementsByTagName("select");
+	let result = [];
 
-    for (let i = 0; i < rows; i++) {
-        let rowData = [];
-        for (let j = 0; j < cols; j++) {
-            rowData.push(selects[i * cols + j].value);
-        }
-        result.push(rowData);
-    }
+	for (let i = 0; i < rows; i++) {
+		let rowData = [];
+		for (let j = 0; j < cols; j++) {
+			if (selects[i * cols + j])
+				rowData.push(selects[i * cols + j].value);
+		}
+		result.push(rowData);
+	}
 
-    return result;
+	return result;
 }
 
 function competeDims() {
+	if (!getEl("compete_rounds").value) {
+		return;
+	}
 	let a = []
-	if (compete_type == "1v1") a = getSelectedValues("1v1_container", getEl("compete_rounds").value, 2);
-	else a = getSelectedValues("group_container", getEl("compete_rounds").value, 1);
+	if (compete_type == "teamblind") a = [[TEAMBLIND_SEL.value()]]
+	else if (compete_type == "1v1") {
+		a = getSelectedValues("1v1_container", 
+		getEl("compete_rounds").value * (COMPETE_ADVANCED.checked() + 1), 2);
+		let b = [];
+		if (COMPETE_ADVANCED.checked()) {
+			for (let i = 0; i < a.length; i += 2) {
+				b.push([a[i][0], a[i+1][0]]);
+				b.push([a[i][1], a[i+1][1]]);
+			}
+			a = b;
+		}
+	} else if (compete_type == "group") {
+		a = getSelectedValues("group_container", getEl("compete_rounds").value *
+			(COMPETE_ADVANCED.checked() + 1), 1);
+	}
+
 	return a;
 }
 
+function switchBlindfold() {
+	let blinded = socket.id;
+	if (competedata.data.blinded == socket.id) {
+		blinded = getOp();
+	}
+	socket.emit("switch_blindfold", room, blinded, blindTime());
+	// toggleBlindfold(blinded == socket.id);
+}
+
+socket.on("switched-blindfold", (data) => {
+	competedata = data;
+	toggleBlindfold(data.data.blinded == socket.id);
+})
+
+function toggleBlindfold(blinded) {
+	getEl("competeswitch").style.display = "none";
+	if (blinded) {
+		toggleOverlay(true);
+		canMan = true;
+	} else {
+		toggleOverlay(false);
+		canMan = false;
+	}
+}
 
 document.getElementById("challenge").onclick = challengemode;
 document.querySelectorAll('button').forEach(button => {
-    button.addEventListener('click', (e) => {
-        e.target.blur();
-    });
+	button.addEventListener('click', (e) => {
+		e.target.blur();
+	});
 });
 function challengemode() {
 	modeData("challenge");
@@ -3865,6 +4727,7 @@ function dailychallenge(cube) {
 	if (localStorage.cdate2 == sinceNov3('d') && cube == 3) return;
 	DIM2 = cube == 3 ? 50 : 100;
 	DIM = DIM2;
+	SIZE = 3;
 	reSetup();
 	shuffleCube();
 	timer.stop();
@@ -3895,14 +4758,14 @@ function blindmode() {
 		setDisplay("none", ["s_easy", "s_medium", "m_34", "m_4", "m_high", "s_OLL", "s_PLL", "s_bot", "s_high", "s_RACE",
 			 "highscore", "s_prac", "s_prac2","blind","b_win","b_start","marathon","ma_buttons"]);
 		setDisplay("inline", ["input", "speed", "slider_div", "undo", "redo","reset2_div"]);
-		setDisplay("block", ["input", "peeks"]);
+		setDisplay("block", ["input", "peeks", "peek_container", "blind2"]);
 		setInnerHTML(["s_INSTRUCT", "s_instruct", "s_instruct2", "s_difficulty"]);
 		getEl("times_desc").innerHTML = "Times:";
 		reSetup();
 		shuffleCube();
 		waitStopTurning(false);
 	} else if (bstep == 3) {
-		setDisplay("none", ["overlay", "keymap", "slider_div", "speed"]);
+		setDisplay("none", ["overlay", "keymap", "slider_div", "speed", "input2"]);
 		setDisplay("block", ["b_win", "b_start","m_high"]);
 		getEl("b_win").innerHTML = "You did it! You solved the cube in " + peeks + " peek" + (peeks == 1 ? "." : "s. <br> Play again?");
 		setScore("blind" + (DIM == 50 ? "3x3" : "2x2"), peeks);
@@ -3913,7 +4776,7 @@ function showMarathon() {
 		"highscore", "s_prac", "s_prac2","blind","b_win","b_start","marathon","ma_buttons"]);
 	setDisplay("inline", ["speed", "slider_div", "undo", "redo", "reset2_div"]);
 	setDisplay("table", ["keymap"]);
-	setDisplay("block", ["times_par", "outertime", "marathon2"]);
+	setDisplay("block", ["times_par", "outertime", "marathon2", "scramble_par"]);
 	setInnerHTML(["s_INSTRUCT", "s_instruct", "s_instruct2", "s_difficulty"]);
 	if (ma_data.type == "blind") {
 		setDisplay("block", ["peeks","times_par"]);
@@ -3926,19 +4789,18 @@ function showMarathon() {
 function startMarathon(type) {
 	reSetup();
 	ma_data.type = type;
-	if (type == "shape" || type == "blind") {
-		ma_data.dims = [changeFive, change19, changeFour, change10, changeSix, changeSeven, change8, change17];
-		ma_data.cubes = ["3x3x2", "2x2x3", "1x3x3", "Jank 2x2", "Plus Cube", "Christmas 3x3", "Christmas 2x2", "Sandwich Cube"];
+	if (type == "cuboid") {
+		ma_data.cubes = ["2x2x4", "2x3x4", "3x3x4", "3x3x5", "4x4 Plus Cube"];
+	} else if (type == "shape" || type == "blind") {
+		ma_data.cubes = ["3x3x2", "2x2x3", "1x3x3", "Jank 2x2", "Plus Cube", "Xmas 3x3", "Xmas 2x2", "Sandwich"];
 	} else if (type == "bandage") {
-		ma_data.dims = [change18.bind(null, 14, [[3,4,6,7,12,13,15,16]]), 
-		change11.bind(null, 7, [[3,4,5,6,7,8]]), 
-		change14.bind(null, 10, [[6,8]]), 
-		change20.bind(null, 16, [[0,1], [24,25]]), 
-		change12.bind(null, 8, [[0,3,6], [2,5,8]]), 
-		change13.bind(null, 9, [[7,8,5,4],[16,15,12],[25,26,23,22]]), 
-		change15.bind(null, 11, [[0,9], [20,11], [24,15], [8,17]]), 
-		change16.bind(null, 12, [[0,9], [2,11], [24,15], [26,17]])];
-		ma_data.cubes = ["Cube Bandage", "Slice Bandage", "Bandaged 2x2", "Bandaged 3x3x2", "Pillars", "Triple Quad", "Z Perm", "T perm"];
+		ma_data.cubes = ["Cube Bandage", "Slice Bandage", "Bandaged 2x2", "Bandaged 3x3x2", "Pillars", "Triple Quad", "Z Perm", "T Perm"];
+	} else if (type == "baby") {
+		ma_data.cubes = ["1x2x2", "1x2x3", "Plus Lite", "3x3x2 Plus Cube", "Snake Eyes", "1x4x4", "1x5x5"];
+	}
+
+	if (type == "blind") {
+		setDisplay("block", ["peek_container"]);
 	}
 	mastep = 0;
 	shapemarathon();
@@ -3948,17 +4810,33 @@ function shapemarathon() {
 		showMarathon();
 		ao5 = [];
 	}
-	if (mastep % 2 == 0 && mastep / 2 < ma_data.dims.length) {
-		getEl("ma_cube").innerHTML = "Cube " + (mastep / 2 + 1) + " of " + ma_data.dims.length;
+	if (mastep % 2 == 0 && mastep / 2 < ma_data.cubes.length) {
+		getEl("ma_cube").innerHTML = "Cube " + (mastep / 2 + 1) + " of " + ma_data.cubes.length;
 		getEl("ma_small").innerHTML = "Solve the " + ma_data.cubes[mastep / 2] + (ma_data.type == "blind" ? " with the fewest peeks.": ".");
-		ma_data.dims[mastep / 2]();
-		shuffleCube();
-		waitStopTurning(false, ma_data.type);
-		toggleOverlay(false, false);
+		let str = "Cube Lineup<br>";
+		ma_data.cubes.forEach((cube, i) => {
+			console.log(i, mastep / 2)
+			if (i == mastep / 2) {
+				str += "<b style = 'color: green'>"
+			}
+			str += (i+1) + ") " + cube;
+			if (i == mastep / 2) {
+				str += "</b>"
+			}
+			str +=  "<br>"
+		})
+		getEl("ma_list").innerHTML = str;
+		b_selectdim[ma_data.cubes[mastep / 2]]();
+		reSetup();
+		setTimeout(() => {
+			shuffleCube();
+			waitStopTurning(false, ma_data.type);
+			toggleOverlay(false, false);
+		}, 50)
 
 	}
-	if (mastep / 2 == ma_data.dims.length) {
-		setDisplay("none", ["overlay", "keymap", "slider_div", "speed", "peeks"]);
+	if (mastep / 2 == ma_data.cubes.length) {
+		setDisplay("none", ["overlay", "keymap", "slider_div", "speed", "peeks", "scramble_par", "input2"]);
 		setDisplay("block", ["m_high"]);
 		let score = ao5.reduce((acc, curr) => acc + curr, 0).toFixed(2);
 		getEl("ma_cube").innerHTML = "Marathon Complete! Your score: " + score + (ma_data.type == "blind" ? (peeks == 1 ? " peek" : " peeks") : "");
@@ -3968,28 +4846,46 @@ function shapemarathon() {
 		} else {
 			setDisplay("block", ["ma_buttons"]);
 		}
-		const map = {shape:"marathon", bandage:"marathon2", blind: "marathon3"};
+		const map = {shape:"marathon", bandage:"marathon2", blind: "marathon3", cuboid: "marathon4", baby: "marathon5"};
 		setScore(map[ma_data.type], score, true);
 	}
 }
-function waitStopTurning(timed = true, mode = "wtev") {
+function waitStopTurning(timed = true, mode = "wtev", start = false) {
 	const interval = setInterval(() => {
 	console.log("canMan?" + canMan)
 	  if (canMan) {
 		clearInterval(interval); // Stop the interval when the cube stops animating
 		if (timed) {
-			timer.setTime(-15000); // Set the timer to -15000
+			timer.setTime(-15000, true); // Set the timer to -15000
 			timer.start(true);      // Start the timer
 		}
+		if (start) {
+			timer.start();
+		}
+		isShuffling = false;
 		if (bstep == 1) bstep = 2;
 		if (comstep > 0 && comstep % 2 == 1) {
+			progressUpdate();
+			timer.inspection = true;
+			otherShuffling = false;
+			setDisplay("inline", ["giveup", "reset2_div"]);
 			comstep++;
-			fadeInText(1, "Go!", "green", "go!");
-			setTimeout(() => {fadeInText(0, "Go!", "green", "go!")}, 600);
+			console.log("adding 1", canMan, comstep);
+			competeScreenshot();
+			setDisplay(competedata.data.type == "1v1" ? "block" : "none", ["ss_container"]);
+			let word = "Go!"
+			if (competedata.data.type == "teamblind") {
+				word = (competedata.data.blinded == socket.id) ? "🕶️" : "👁️";
+			}
+			fadeInText(1, word, "green", "go!");
+			setTimeout(() => {fadeInText(0, word, "green", "go!")}, 600);
+			if (competedata.data.type == "teamblind") {
+				canMan = competedata.data.blinded == socket.id;
+			}
 		}
 		console.log("CHANGING COMPSTEP", comstep);
-		if (getEl("marathon2").style.display == "block" && (mode == "shape" || mode == "bandage" || mode == "blind")) mastep++;
-		if (!nosavesetupdim.includes(DIM) && comstep == 0) {
+		if (getEl("marathon2").style.display == "block" && (["shape", "bandage", "blind", "cuboid", "baby"].includes(mode))) mastep++;
+		if ((savesetupdim.includes(DIM) && SIZE == 3) && comstep == 0 && mode != "cuboid") {
 			const interval2 = setInterval(() => {
 				savesetup = IDtoReal(IDtoLayout(decode(getID())));
 				special[2] = savesetup;
@@ -4021,11 +4917,26 @@ function mapBandaged() {
 	}
 	return copyban;
 }
+function appendToTable(hotkeys, id, step, padding = "5px") {
+	const table = document.getElementById(id);
+
+	for (let i = 0; i < hotkeys.length; i += step) {
+		const row = document.createElement('tr');
+		
+		// Create first cell set (number and description) with adjustable padding
+		row.innerHTML += `<td style="padding-left: ${padding}; padding-right: ${padding};"><b>${hotkeys[i][0]}</b></td><td style="padding-left: ${padding}; padding-right: ${padding};">${hotkeys[i][1]}</td>`;
+		
+		// Check if there's a second cell set (for odd-length arrays) with adjustable padding
+		if (i + 1 < hotkeys.length && step == 2) {
+			row.innerHTML += `<td style="padding-left: ${padding}; padding-right: ${padding};"><b>${hotkeys[i + 1][0]}</b></td><td style="padding-left: ${padding}; padding-right: ${padding};">${hotkeys[i + 1][1]}</td>`;
+		}
+		
+		table.appendChild(row);
+	}
+}
+
 function startchallenge() {
-	const cubemap = {3 : 50, 2: 100, 4 : 2, 5 : 15};
-	DIM2 = cubemap[weeklyscrambles[week].cube];
-	DIM = DIM2;
-	changeCam(weeklyscrambles[week].cube);
+	b_selectdim[weeklyscrambles[week].cube]();
 	if (weeklyscrambles[week].hasOwnProperty("bandaged")) {
 		bandaged = weeklyscrambles[week].bandaged;
 	}
@@ -4036,19 +4947,23 @@ function startchallenge() {
 	timer.stop();
 	timer.reset();
 	MODE = "weekly";
-	timer.setTime(-15000);
-	timer.start(true);
-	savesetup = IDtoReal(IDtoLayout(decode(weeklyscrambles[week].scramble)));
-	special[2] = savesetup;
-	quickSolve();
+	if (weeklyscrambles[week].pos) {
+		timer.setTime(-15000, true);
+		timer.start(true);
+		savesetup = IDtoReal(IDtoLayout(decode(weeklyscrambles[week].pos)));
+		special[2] = savesetup;
+		quickSolve();
+	} else {
+		changeArr(weeklyscrambles[week].scramble);
+		multiple2("scramble");
+		waitStopTurning(true);
+	}
 	setInput();
 	cstep = 1;
 	setDisplay("none", ["c_INSTRUCT", "c_week"]);
-	setDisplay("inline", ["undo", "redo", "reset3_div",  "speed", "slider_div", "outertime"]);
+	setDisplay("inline", ["undo", "redo", "reset2_div",  "speed", "slider_div", "outertime"]);
 	setDisplay("block", ["input"]);
-	if ([2,15].includes(DIM2)) {
-		INPUT.value("3x3x2");
-		SCRAM.value("3x3x2");
+	if (INPUT.selected() != "Normal") {
 		INPUT.attribute('disabled', true);
 	}
 }
@@ -4095,8 +5010,12 @@ function toggleOverlay(show, p = true) {
 		setDisplay("none", ["overlay"]);
 		if (p) peeks++;
 	}
-	getEl("wannapeek").style.display = getEl("overlay").style.display;
-	getEl("peekbutton").style.display = getEl("overlay").style.display;
+	if (MODE != "competing") {
+		getEl("wannapeek").style.display = getEl("overlay").style.display;
+		getEl("peekbutton").style.display = getEl("overlay").style.display;
+	} else {
+		setDisplay("none", ["wannapeek", "peekbutton"]);
+	}
 	getEl("overlay").style.backgroundColor = BACKGROUND_COLOR;
 }
 function fullScreen(isfull) {
@@ -4131,12 +5050,18 @@ function halfScreen(isfull) {
 	fullscreen = isfull;
 	resized();
 }
-async function fadeInText(o, text, color = "red", el = "dnf") {
+async function fadeInText(o, text, color = "red", el = "dnf", time = 600) {
 	const dnfElement = document.getElementById(el);
 	dnfElement.style.display='block';
 	dnfElement.innerHTML = text;
 	dnfElement.style.color = color;
 	dnfElement.style.opacity = o;
+
+	if (o === 0) {
+		setTimeout(() => {
+			dnfElement.style.display = 'none'; // Hide after fade out
+		}, time); // Match timeout with fade duration
+	}
 }
 
 document.getElementById("account").onclick = accountmode;
@@ -4249,7 +5174,7 @@ function speedmode()
 	document.getElementById("s_INSTRUCT").innerHTML = DIM == 50 ? "3x3 Time Attack" : "2x2 Time Attack";
 	document.getElementById("s_speedtitle").innerHTML = DIM == 50 ? "3x3 Speed Practice" : "2x2 Speed Practice";
 	document.getElementById("s_bottitle").innerHTML = DIM == 50 ? "3x3 Bot Race" : "2x2 Bot Race";
-	document.getElementById("s_instruct").innerHTML = "Complete <b>4</b> challenges, as fast as possible!<br>Select Difficulty/Mode";
+	document.getElementById("s_instruct").innerHTML = "Complete <b>4</b> challenges, as fast as possible!";
 	document.getElementById("s_difficulty").innerHTML = "";
 	var elements = document.getElementsByClassName('normal');
 	for(var i=0; i<elements.length; i++) { 
@@ -4386,7 +5311,7 @@ function showSpeed()
 }
 function reCam()
 {
-	ZOOMADD = DIM == "1x2x3" ? 20 : DIM == "2x3x4" ? 60 : DIM == "1x4x4" ? 100 : DIM == "3x3x4" ? 60 : DIM == "3x3x5" ? 120 : DIM == "2x2x4" ? 50 :
+	ZOOMADD = DIM == "1x2x2" ? 20 : DIM == "1x2x3" ? 20 : DIM == "2x3x4" ? 60 : DIM == "1x4x4" ? 100 : DIM == "3x3x4" ? 60 : DIM == "3x3x5" ? 120 : DIM == "2x2x4" ? 50 :
 				SIZE >= 5 ? 180 : SIZE == 4 ? 100 : DIM2 == 100 ? 140 : 0;
 	CAM = p.createEasyCam(p._renderer);
 	CAM_PICKER = p.createEasyCam(PICKER.buffer._renderer);
@@ -4396,43 +5321,44 @@ function reCam()
 function updateScores() {
 	let modes = ["easy", "medium", "oll", "pll"];
 	let display = {easy: "Easy", medium: "Medium", oll: "OLL", pll: "PLL"};
+	let cube = DIM == 50 ? "3x3 " : "2x2 ";
 	if (DIM == 50) {
 		// speedmode scores
 		modes.forEach((mode) => {
 			const score = localStorage[mode];
 			if (score != null && score != -1) {
-				document.getElementById("s_" + mode + "score").innerHTML = display[mode] +  ": " + score;
+				document.getElementById("s_" + mode + "score").innerHTML = cube + display[mode] + ": " + score;
 			} else {
-				document.getElementById("s_" + mode + "score").innerHTML = display[mode] +  ": " + "N/A";
+				document.getElementById("s_" + mode + "score").innerHTML = cube + display[mode] +  ": " + "N/A";
 			}
 		})
 		document.getElementById("s_pllscore").style.display = "block";
 	} else {
 		if (localStorage["easy2"] != null  && localStorage["easy2"] != -1) {
-			document.getElementById("s_easyscore").innerHTML = "Easy: " + localStorage["easy2"];
+			document.getElementById("s_easyscore").innerHTML = cube + "Easy: " + localStorage["easy2"];
 		} else {
-			document.getElementById("s_easyscore").innerHTML = "Easy: N/A";
+			document.getElementById("s_easyscore").innerHTML = cube + "Easy: N/A";
 		}
 
 		if (localStorage["oll2"] != null  && localStorage["oll2"] != -1) {
-			document.getElementById("s_mediumscore").innerHTML = "OLL: " + localStorage["oll2"];
+			document.getElementById("s_mediumscore").innerHTML = cube + "OLL: " + localStorage["oll2"];
 		} else {
-			document.getElementById("s_mediumscore").innerHTML = "OLL: N/A";
+			document.getElementById("s_mediumscore").innerHTML = cube + "OLL: N/A";
 		}
 
 		if (localStorage["pbl2"] != null && localStorage["pbl2"] != -1) {
-			document.getElementById("s_ollscore").innerHTML = "PBL: " + localStorage["pbl2"];
+			document.getElementById("s_ollscore").innerHTML = cube + "PBL: " + localStorage["pbl2"];
 		} else {
-			document.getElementById("s_ollscore").innerHTML = "PBL: N/A";
+			document.getElementById("s_ollscore").innerHTML = cube + "PBL: N/A";
 		}
 		document.getElementById("s_pllscore").style.display = "none";
 	}
 	// movesmode scores
-	modes = ["m_easy", "m_medium", "c_week", "c_day", "c_day2", "c_day_bweek", "c_day2_bweek", "blind2x2", "blind3x3", "marathon","marathon2","marathon3"];
-	display = {m_easy: "3-5 Movers", m_medium: "Medium", c_week: "Weekly #" + (week+1) +  "", c_day2: "Daily 2x2 all time"
+	display = {m_easy: "3-5 Movers", m_medium: "Endless", c_week: "Weekly #" + (week+1) +  "", c_day2: "Daily 2x2 all time"
 		, c_day: "Daily 3x3 all time", c_day_bweek : "Daily 3x3 this week", c_day2_bweek : "Daily 2x2 this week", 
-			blind2x2 : "Blind 2x2", blind3x3: "Blind 3x3", marathon: "Shape Marathon", marathon2: "Bandage Marathon", marathon3: "Blind Marathon"};
-	modes.forEach((mode) => {
+			blind2x2 : "Blind 2x2", blind3x3: "Blind 3x3", marathon: "Shape Marathon", marathon2: "Bandage Marathon", marathon3: "Blind Marathon", race2x2: "2x2 Virtual Race",
+			race3x3: "3x3 Virtual Race", marathon4: "Cuboid Marathon", marathon5: "Baby Marathon"};
+	Object.keys(display).forEach((mode) => {
 		const score  = localStorage[mode];
 		if (mode.includes("bweek") && score && JSON.parse(score) != null && score != -1 && score != "null" && JSON.parse(score).score != "null" && JSON.parse(score).week == week) {
 			document.getElementById(mode + "score").innerHTML = display[mode] +  ": " + JSON.parse(score).score;
@@ -4445,10 +5371,10 @@ function updateScores() {
 }
 function setScore(mode, total, getlow = true) {
 	const highscores = localStorage[mode];
-	console.log("In setscore ", mode, total, localStorage[mode], !highscores);
+	console.log("In setscore ", mode, total, localStorage[mode], !highscores, MODE, getlow, total < highscores && getlow, ((total > highscores && !getlow) || (total < highscores && getlow)));
 	const chalday = {"c_week" : "cdate", "c_day" : "cdate2", "c_day2" : "cdate3"}
 	if (!highscores || highscores == -1 || (MODE == "speed" && total < highscores) || 
-	(MODE == "moves" && (total > highscores && !getlow) || (total < highscores && getlow))
+	(MODE == "moves" && ((total > highscores && !getlow) || (total < highscores && getlow)))
 	|| (["weekly", "daily"].includes(MODE) && (localStorage[chalday[mode]] != (mode == "c_week" ? week : sinceNov3('d')) || total < highscores))) {
 		if (localStorage.username != "signedout")
 			document.getElementById("highscore").style.display = "block";
@@ -4829,6 +5755,7 @@ function practicePLL() {
 		let rnd = p.random(pracalgs);
 		let str = "";
 		let tempobj = pracmode == "OLL" ? olls : DIM == 50 ? obj2 : pbls;
+		arr = [];
 		changeArr(tempobj[rnd][1])
 		str = tempobj[rnd][0];
 		document.getElementById("s_instruct").innerHTML = "<p style = 'font-size:15px;'>" + str + "</p>";
@@ -4997,6 +5924,10 @@ async function saveData(username, password, method, al) {
 		marathon2:localStorage.marathon2 ?? -1,
 		marathon3:localStorage.marathon3 ?? -1,
 		bandaged3: localStorage.bandaged3 ?? "null",
+		race2x2: localStorage.race2x2 ?? -1, 
+		race3x3: localStorage.race3x3 ?? -1,
+		marathon4: localStorage.marathon4 ?? -1,
+		marathon5: localStorage.marathon5 ?? -1,
 	};
 	console.log(data);
 	await repeatUntilSuccess(() => putUsers(data, method));
@@ -5041,7 +5972,8 @@ async function loadData(times) {
 	});
 	console.log("Userdata is ", userdata[index]);
 	if (times) {
-		let params = ["easy", "medium", "oll", "pll", "easy2", "oll2", "pbl2", "blind2x2", "blind3x3", "marathon", "marathon2","marathon3"];
+		let params = ["easy", "medium", "oll", "pll", "easy2", "oll2", "pbl2", "blind2x2", "blind3x3", 
+			"marathon", "marathon2","marathon3","race2x2","race3x3","marathon4","marathon5"];
 		params.forEach((param) => {
 			if (userdata[index][param] != -1 && (localStorage[param] == undefined || localStorage[param] == -1 || +localStorage[param] > +userdata[index][param]))
 				localStorage[param] = userdata[index][param];
@@ -5136,41 +6068,163 @@ function successSQL(text, id = "logindesc") {
 	}, 2000)
 }
 
-function speedRace(){
+function speedRace(type){
+	MINIMODE = type;
 	race = 1;
 	round = 1;
 	roundresult = [0, 0];
 	showSpeed();
-	setDisplay("none", ["keymap", "input", "input2", "undo", "scram", "redo", "reset3_div", "outermoves", "outertime", "times_par", "delayuseless", "scramble_par"]); 
-	setDisplay("block", ["readybot", "delaywhole"]);
-
+	setDisplay("none", ["keymap", "input", "input2", "undo", "scram", "redo", "reset3_div", "outermoves", "outertime", "times_par", "delayuseless", "scramble_par", "r_physical", "input2"]); 
+	setDisplay("block", ["readybot", "delaywhole", "race_instruct_div", "botestimate"]);
+	setInnerHTML(["s_INSTRUCT", "s_instruct"])
 
 	document.getElementById("s_instruct2").innerHTML = "";
 	document.getElementById("s_RACE3").innerHTML = "";
-	document.getElementById("s_INSTRUCT").innerHTML = "Pre-Setup";
-	document.getElementById("s_instruct").innerHTML = "First, adjust bot turn speed (1 = slow, 200 = fast)<br>Then, adjust bot turn delay (in seconds)";
+	getEl("r_INSTRUCT").innerHTML = `It's you versus the bot, first to 5. <br>
+		${type == "physical" ? "You will be racing the bot using a <b>Physical</b> Rubik's cube." : ""}`;
+	setDisplay("block", ["r_sliders"]);
+	setDisplay("none", ["slider_div", "speed", "delaywhole"]);
 	modeData("race");
 	canMan = true;
 }
 function speedRace2(){
 	canMan = true;
-	shuffling = true;
-	race = 2;
+	timer.stop();
+	timer.reset();
 	quickSolve();
-	shuffleCube();
-	document.getElementById("readybot").style.display = "none";
-	document.getElementById("delaywhole").style.display = "none";
-	document.getElementById("slider_div").style.display = "none";
-	document.getElementById("speed").style.display = "none";
-	document.getElementById("scramble_par").style.display = "block";
-	document.getElementById("outertime").style.display = "block";
-	document.getElementById("s_INSTRUCT").innerHTML = "Round " + round;
-	document.getElementById("s_instruct").innerHTML = "Scramble YOUR OWN cube to the given scramble. Release space/touch screen to start solving, and press any key/touch anywhere to stop. Winner gets a point, first to 5 wins!";
+	if (MINIMODE == "physical") {
+		setTimeout(() => {
+			canMan = true;
+			shuffling = true;
+			shuffleCube();
+			document.getElementById("s_INSTRUCT").innerHTML = "Round " + round;
+			document.getElementById("s_instruct").innerHTML = MINIMODE == "physical" ? "Scramble YOUR OWN cube to the given scramble. Release space/touch screen to start solving, and press any key/touch anywhere to stop. Winner gets a point, first to 5 wins!"
+				: "The bot starts solving when you make your first turn. Winner gets a point, first to 5 wins!";
+			juststarted = true;
+			setDisplay("none", ["delaywhole", "speed", "slider_div"]);
+		}, 200)
+	} else {
+		document.getElementById("s_INSTRUCT").innerHTML = "Connecting to autosolve bot";
+		setDisplay("inline", ["reset2_div", "undo", "redo", "slider_div", "delaywhole", "speed"]);
+		setDisplay("block", ["r_physical"]);
+	}
+	setDisplay("none", ["race_instruct_div", "readybot", "s_RACE2", "r_sliders", "r_iframe", "botestimate"]);
+	setDisplay("block", ["scramble_par", "outertime"])
 	document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
-	document.getElementById("s_RACE2").style.display = "none";
+	if (MINIMODE == "virtual") {
+		if (round == 1) {
+			getEl("r_iframe").src = `${window.location.origin}/?race=true&id=${socket.id}&dim=${DIM == 50 ? "3x3" : "2x2"}&speed=${RACE_SLIDER.value()}&delay=${RACE_DELAY_SLIDER.value()}`;
+		} else {
+			socket.emit("bot_shuffle", socket.id, DIM);
+		}
+	}
 	canMan = false;
 }
-function raceTimes(){
+function raceWinner(winner) {
+	if (race > 0) {
+		getEl("giveup").style.display = "none";
+		round++;
+		roundresult[winner]++;
+		roundresult.push([Math.round(timer.getTime() / 10)/100.0, winner]);
+		raceResults(winner);
+	}
+}
+function raceResults(winner) {
+	if (winner == 0) {
+		if(roundresult[0] < 5){
+			document.getElementById("s_INSTRUCT").innerHTML = "You Win!";
+			document.getElementById("s_instruct").innerHTML = "Press continue to go to the next round!";
+			document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
+			document.getElementById("s_RACE2").style.display = "block";
+			raceTimes(0);
+		}
+		else{
+			document.getElementById("s_INSTRUCT").innerHTML = "You have defeated the bot!!!";
+			document.getElementById("s_instruct").innerHTML = "Do you want to play again?";
+			document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>"
+				+ "<br>Bot average speed: " + botestimate + "s";
+			document.getElementById("s_RACE").style.display = "block";
+			raceTimes(0);
+			raceHide();
+			if (MINIMODE == "virtual")
+				setScore(DIM == 50 ? "race3x3" : "race2x2", botestimate);
+		}
+	} else if(roundresult[1] < 5){
+		document.getElementById("s_INSTRUCT").innerHTML = "Bot Wins!";
+		document.getElementById("s_instruct").innerHTML = "Press continue to go to the next round!";
+		document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
+		document.getElementById("s_RACE2").style.display = "block";
+		raceTimes(1);
+	} else{
+		document.getElementById("s_INSTRUCT").innerHTML = "You were defeated by the bot :(";
+		document.getElementById("s_instruct").innerHTML = "Do you want to play again?";
+		document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
+		document.getElementById("s_RACE").style.display = "block";
+		raceTimes(1);
+		raceHide();
+	}
+}
+function raceHide() {
+	setDisplay("none", ["slider_div", "speed", "delaywhole", "scramble_par"])
+}
+function botConnect(obj) {
+	b_selectdim[obj.get('dim')]();
+	fullScreen(true);
+	var elements = document.getElementsByClassName('normal');
+	for(var i=0; i<elements.length; i++) { 
+		elements[i].style.display='none';
+	}
+	setDisplay("none", ["banner", "settings"]);
+	socket.emit("bot_connect", obj.get('id'), DIM);
+	raceid = obj.get('id');
+	MODE = "bot";
+	const s = obj.get('speed');
+	SPEED_SLIDER.value(s);
+	SPEED = s;
+	DELAY_SLIDER = obj.get('delay');
+	DELAY = obj.get('delay');
+	race = 2;
+}
+socket.on("bot_connected", (scramble) => {
+	realtop = TOPWHITE.value()[0].toLowerCase();
+	special[2] = IDtoReal(IDtoLayout(decode(colorvalues[realtop])));
+	quickSolve();
+	if (MODE == "bot") {
+		reSetup();
+	}
+	if (MODE != "bot") {
+		document.getElementById("s_INSTRUCT").innerHTML = "Round " + round;
+		document.getElementById("s_instruct").innerHTML = MINIMODE == "physical" ? "Scramble YOUR OWN cube to the given scramble. Release space/touch screen to start solving, and press any key/touch anywhere to stop. Winner gets a point, first to 5 wins!"
+				: "The bot starts solving when you make your first turn. Winner gets a point, first to 5 wins!";
+		getEl("r_iframe").style.display = "block";
+	}
+	console.log("TRYNA SCRAMBLE", scramble)
+	changeArr(scramble);
+	getEl("scramble").innerHTML = scramble;
+	multiple2("scramble");
+	waitStopTurning(true, "virtual_race");
+	juststarted = true;
+});
+
+socket.on("started_race", () => {
+	if (MODE == "bot") {
+		canMan = true;
+		race = 2;
+		solveCube();
+	}
+});
+
+socket.on("race_won", (winner) => {
+	if (winner == 0) {
+		raceDetect();
+	} else {
+		raceWinner(1);
+	}
+	timer.stop();
+	stopMoving();
+})
+
+function raceTimes(winner){
 	let str = "";
 	for(let i = 2; i < roundresult.length; i++){
 		if(roundresult[i][1] == 0)
@@ -5403,12 +6457,14 @@ function multipleEasy(nb, dificil, mode = "") {
 	if (nb < arr.length) {
 		canMan = false;
 		shufflespeed = 2;
+		otherShuffling = true;
 		notation(arr[nb]);
 		console.log(nb, "easy", dificil);
-		waitForCondition(multipleEasy.bind(null, nb + 1, dificil, mode), false);
+		waitForCondition(multipleEasy.bind(null, nb + 1, dificil, mode), "other");
 	}
 	else
 	{
+		otherShuffling = false;
 		shufflespeed = 5;
 		setLayout();
 		savesetup = IDtoReal(IDtoLayout(decode(getID())));
@@ -5939,8 +6995,11 @@ function shufflePossible(len, total2, prev){
 	canMan = false;
 	multipleMod(0, len, total2, prev);
 }
-function shuffleCube(nb) { 
-	if(canMan == false || customb == 1) return;
+function shuffleCube(override = false) { 
+	if((canMan == false || customb == 1) && !override) return;
+	if (!override) {
+		numshuffle = 0;
+	}
 	if(bandaged.length > 0){
 		if (DIM == 8)
 			shufflePossible(60, "", "  ");
@@ -6001,11 +7060,15 @@ function shuffleCube(nb) {
 		quickSolve();
 		possible = ["E", "D", "B"];
 	}
+	console.log("s iISs", s)
 	if(DIM4 == 2)
 		s = 10;
 	if (SIZE == 4) s = 30;
 	if (["2x2x4", "3x3x5"].includes(DIM) || SIZE > 4 || (SIZE == 4 && custom == 1)) s = 45;
 	if (["3x3x4", "1x4x4"].includes(DIM)) s = 30;
+	console.log("S is", s)
+	if (shownCubies().length < 15 && custom == 0) s = 10;
+	console.log("s is", s)
 	for(let i = 0; i < s; i++)
 	{
 		let mid = Math.floor(SIZE / 2);
@@ -6079,7 +7142,8 @@ function shuffleCube(nb) {
 	}
 	if(SCRAM.value() != "Last Layer")
 	document.getElementById("scramble").innerHTML = total;
-	multiple2("scramble");
+	competeshuffle = total;
+	multiple2("realscramble");
 }
 function downloadAll()
 {
@@ -6343,7 +7407,7 @@ function displayAverage()
 		displaymoves += " &nbsp;Mo" + movesarr.length + ": " + (Math.round((meanmoves/(movesarr.length * 1.0))*100)/100);
 	if(movesarr.length == 0)
 		displaymoves = "N/A";
-    if (document.getElementById('moves2').innerHTML != displaymoves)
+	if (document.getElementById('moves2').innerHTML != displaymoves)
 		document.getElementById('moves2').innerHTML = displaymoves;
 }
 function randomMove() {
@@ -6367,7 +7431,7 @@ function getIndex(cuby)
 	return null;
 }
 function arraysEqual(arr1, arr2) {
-    return arr1.length === arr2.length && arr1.every((value, index) => value == arr2[index]);
+	return arr1.length === arr2.length && arr1.every((value, index) => value == arr2[index]);
 }
 function canMouse() {
 	let cubies = shownCubies();
@@ -6400,7 +7464,7 @@ function hasColor(c) {
 function startAction() {	
 	if(MODE == "cube" && !mouseAllowed() && custom == 0) return; 
 	if(custom == 1 && !canMouse()) return; 
-	if(timer.isRunning && race > 1 && Math.round(timer.getTime() / 10)/100.0 >= 0.5){ //racedetect
+	if(timer.isRunning && race > 1 && Math.round(timer.getTime() / 10)/100.0 >= 0.5 && MINIMODE == "physical"){ //racedetect
 		raceDetect();
 		return;
 	}
@@ -6474,9 +7538,11 @@ function animateRotate(axis, dir) {
 				CUBE[i].dir = dir;
 				CUBE[i].anim_axis = axis;
 				if(shufflespeed < 5)
-				CUBE[i].anim_angle = CUBE[i].dir * shufflespeed;
+					CUBE[i].anim_angle = CUBE[i].dir * shufflespeed;
+				else if (MINIMODE == "physical")
+					CUBE[i].anim_angle = CUBE[i].dir * (RACE_SLIDER.value())
 				else
-				CUBE[i].anim_angle = CUBE[i].dir * SPEED;
+					CUBE[i].anim_angle = CUBE[i].dir * SPEED;
 			}
 		}
 	}
@@ -6484,7 +7550,8 @@ function animateRotate(axis, dir) {
 function animate(axis, rows, dir, timed, bcheck = true) {
 	
 	if(isAnimating()) return false;
-	if (blinded()) {
+	if (blinded() || (MODE == "competing" && competedata.data.type == "teamblind" 
+		&& moves == 0 && competedata.data.blinded == socket.id && !isShuffling)) {
 		toggleOverlay(true);
 	}
 	let total = 0;
@@ -6502,7 +7569,7 @@ function animate(axis, rows, dir, timed, bcheck = true) {
 			if(total > 0 && total < bandaged[i].length)
 				cuthrough = true;
 		}
-		if (cuthrough && !(DIM == 50 && SIZE > 3)) {
+		if (cuthrough && SIZE <= 3) {
 			undo.pop();
 			if(timer.isRunning)
 				moves--;
@@ -6546,14 +7613,16 @@ function animate(axis, rows, dir, timed, bcheck = true) {
 				CUBE[i].dir = dir;
 				CUBE[i].anim_axis = axis;
 				if(shufflespeed < 5)
-				CUBE[i].anim_angle = CUBE[i].dir * shufflespeed;
+					CUBE[i].anim_angle = CUBE[i].dir * shufflespeed;
+				else if (MINIMODE == "physical")
+					CUBE[i].anim_angle = CUBE[i].dir * (RACE_SLIDER.value())
 				else
-				CUBE[i].anim_angle = CUBE[i].dir * SPEED;
+					CUBE[i].anim_angle = CUBE[i].dir * SPEED;
 			}
 		}
 	}
 	initAudioContext(); // Ensure AudioContext is active
-    playAudio();
+	playAudio();
 	return true;
 }
 
@@ -6565,18 +7634,18 @@ function sleep(milliseconds) {
 	} while (currentDate - date < milliseconds);
 }
 document.addEventListener('keydown', function(event) {
-    if (event.ctrlKey || event.metaKey) {
-        inspect = true;
-    }
+	if (event.ctrlKey || event.metaKey) {
+		inspect = true;
+	}
 	if (event.key == "Tab") {
-        event.preventDefault();
-    }
+		event.preventDefault();
+	}
 });
 
 document.addEventListener('keyup', function(event) {
-    if (!event.ctrlKey && !event.metaKey) {
-        inspect = false;
-    }
+	if (!event.ctrlKey && !event.metaKey) {
+		inspect = false;
+	}
 });
 
 p.keyPressed = (event) => {
@@ -6593,7 +7662,7 @@ p.keyPressed = (event) => {
 	if(KEYBOARD.value() == "Default"){
 		if(needsnew.includes(p.keyCode)) p.keyCode = newkey[p.keyCode];
 	}
-	if(timer.isRunning && race > 1 && Math.round(timer.getTime() / 10)/100.0 > 0){ //racedetect
+	if(timer.isRunning && race > 1 && Math.round(timer.getTime() / 10)/100.0 > 0 && MINIMODE == "physical"){ //racedetect
 		raceDetect();
 		return;
 	}
@@ -6602,16 +7671,14 @@ p.keyPressed = (event) => {
 		console.log(DIM, DIM2, special, MODE);
 		setLayout();
 		console.log(layout)
-		if (blinded() && getEl("overlay").style.display == "block") {
-			toggleOverlay(false);
-		} else if (canMan == false && (MODE == "normal" || MODE == "timed")) {
+		if (canMan == false && (MODE == "normal" || MODE == "timed")) {
 			stopMoving();
 			return;
 		} else if (getEl("s_start").style.display == "block") {
 			practicePLL();
 		} else if (getEl("readybot").style.display == "block") {
 			speedRace2();
-		} else if (race == 2 && !isAnimating()) {
+		} else if (race == 2 && !isAnimating() && MINIMODE == "physical") {
 			getEl("outertime").style.color = "green";
 		}
 	}
@@ -6621,7 +7688,7 @@ p.keyPressed = (event) => {
 			return;
 		}
 		if(document.getElementById("s_instruct").innerHTML.includes("In one game of"))
-		regular();
+			regular();
 		if(MODE == "moves") {
 			if (getEl("blind").style.display == "block") {
 				regular();
@@ -6662,7 +7729,7 @@ p.keyPressed = (event) => {
 			custom = 0
 		}
 	}
-	if(p.keyCode == 50 && race < 1) //2 //two
+	if(p.keyCode == 50 && (race < 1 || MINIMODE == "virtual")) //2 //two
 	{
 		if (p.keyIsDown(p.SHIFT) && (getEl("mode3").style.display != "none" || getEl("mode6").style.display != "none")) {
 			timedmode();
@@ -6691,14 +7758,27 @@ p.keyPressed = (event) => {
 		}
 		return;
 	}
+	if (p.keyCode == 219) { //[
+		if (MODE == "cube" && custom == 0) {
+			changeMod(-1);
+		}
+		if (getEl("deleteban").style.display != "none") {
+			leftBan();
+		}
+		return;
+	}
+	if (p.keyCode == 221) { //]
+		if (MODE == "cube" && custom == 0) {
+			changeMod(1);
+		}
+		if (getEl("deleteban").style.display != "none") {
+			rightBan();
+		}
+		return;
+	}
 	if(p.keyCode == 16){ //shift
-		// b_selectdim["1x2x3"]();
-		// console.log(competedata, compete_alltimes);
 		// quickSolve();
-		// moveSetup();
-		// switchFour();
-		// console.log(mapBandaged())
-		// console.log(mapBandaged());
+		// console.log(timer.startTime);
 	}
 	if(p.keyCode == 9){ //tab
 		if (p.keyIsDown(p.SHIFT)) 
@@ -6707,7 +7787,7 @@ p.keyPressed = (event) => {
 			fullScreen(!fullscreen);
 		return;
 	}
-	if(customb > 0 && (p.keyCode <37 || p.keyCode > 40)) return;
+	if(customb > 0 && (p.keyCode < 37 || p.keyCode > 40)) return;
 
 	if (p.keyCode == 27 && p.keyIsDown(p.SHIFT)) { //escape
 		if (MODE == "speed") {
@@ -6831,7 +7911,7 @@ p.keyPressed = (event) => {
 					arr.unshift(toGearCube(arr[0]));
 				}
 			}
-			if(INPUT.value() == "Gearcube II") {
+			if(INPUT.value() == "Gearcube II" && bad4.includes(p.keyCode)) {
 				if (arr[0].includes("w")) {
 					arr[0] = arr[0].replace(/w/g, "");
 				}
@@ -6840,8 +7920,6 @@ p.keyPressed = (event) => {
 					arr = []
 				} else {
 					arr.push(arr[0]);
-					console.log(arr[0][0])
-					console.log(opposite2[arr[0][0]] + (arr[0].includes("'") ?  "" : "'"))
 					arr.push(opposite2[arr[0][0]] + (arr[0].includes("'") ?  "" : "'"));
 				}
 			}
@@ -6869,12 +7947,14 @@ p.keyPressed = (event) => {
 					quickSolve();
 			}
 			if(MODE == "speed" && getEl("s_high").style.display == "none" && getEl("s_prac2").style.display == "none")
-			speedSetup();
+				speedSetup();
+			if(MODE == "competing" && getEl("reset2_div").style.display == "inline")
+				moveSetup();
 			
 			break;
 			case 192: //`
 			if (p.keyIsDown(p.SHIFT)) {
-				(MODE == "normal" || MODE == "timed")  && solveCube();
+				(MODE == "normal" || MODE == "timed" || MODE == "bot")  && solveCube();
 			} else if(["normal", "cube", "timed", "account", "login", "compete"].includes(MODE)) {
 				shuffleCube();
 			} else if (["moves", "speed"].includes(MODE) && getEl("switcher").style.display == "block") {
@@ -6882,8 +7962,6 @@ p.keyPressed = (event) => {
 			}
 			break;
 			case 32: //space
-			// quickSolve();
-			console.log(DIM, DIM2, isSolved(), mastep, mapBandaged());
 			if(MODE == "cube" || MODE == "normal" || MODE == "timed")
 			{
 				stopTime();
@@ -6940,7 +8018,7 @@ p.keyPressed = (event) => {
 			if (p.keyIsDown(p.SHIFT)) {
 				cubemode();
 			} else {
-				if (getEl("type3").style.display == "block") {
+				if (getEl("type3").style.display == "block" && !timer.isRunning) {
 					if (DIM2 == 50) {
 						changeTwo();
 					} else {
@@ -6950,7 +8028,7 @@ p.keyPressed = (event) => {
 			}
 			break;
 		}
-		if (keyMoveMap[p.keyCode] && arr.length > 0) {
+		if (keyMoveMap[p.keyCode] && arr.length > 0 && !isAnimating()) {
 			multiple(0, true);
 		}
 	}
@@ -7019,14 +8097,12 @@ function multiple(nb, timed, use = "default") {
 			const values = movemap[move][1];
 			if ([move, move + "'"].includes(arr[nb])) {
 				for(let i = 0; i < cubies.length; i++) {
-					console.log("ONEDOWN ATTEMPT", values,  CUBE[cubies[i]][axis], MAXX);
 					onedown = onedown || values.some((value) => value == CUBE[cubies[i]][axis]);
 				}
 				for(let i = 0; i < cubies.length; i++) {
 					alldown = alldown && values.some((value) => value == CUBE[cubies[i]][axis]);
 				}
 			}
-			console.log("ONEDOWN IS", onedown);
 		}
 		if(alldown == true) timed = false;
 		if (!onedown) {
@@ -7040,16 +8116,16 @@ function multiple(nb, timed, use = "default") {
 				return;
 			} else if (map.hasOwnProperty(arr[nb])) {
 				arr[nb] = map[arr[nb]];
-                multiple(nb, timed, use);
-                return;
+				multiple(nb, timed, use);
+				return;
 			} else {
 				multiple(nb + 1, timed, use);
 				return;
 			}
 		}
-		console.log("NOTATION", arr[nb]);
+		console.log("NOTATION", arr[nb], use);
 		notation(arr[nb], timed);
-		if (use == "default") {
+		if (["default", "testalg"].includes(use)) {
 			let bad = -1;
 			if(undo.length > 0)
 			{
@@ -7061,49 +8137,82 @@ function multiple(nb, timed, use = "default") {
 			}
 			if(timer.isRunning && MODE != "moves")
 			{
+				console.log("MOVING HERE");
 				moves++;
 			}
 			else if(MODE == "moves")
 			{
-				if(undo[undo.length-2] == bad)
-				{
+				if(undo[undo.length-2] == bad) {
 					undo.pop();
 					undo.pop();
 					moves--;
+				} else {
+					if (!["x", "y", "z"].includes(arr[nb][0]))
+						moves++;
 				}
-				else
-					moves++;
 			}
 		}
-		waitForCondition(multiple.bind(null, nb + 1, timed, use), true);
+		console.log("RIGHT BEFORE", use)
+		waitForCondition(multiple.bind(null, nb + 1, timed, use), use);
 	}
 	else
 	{
+		shuffling = false;
+		if (isSolved() && numshuffle < 5 && use.includes("scramble") && ((["1x2x3", "1x2x2", "sandwich2x2"].includes(DIM)) || MODE == "competing")) {
+			shuffleCube(true);
+			numshuffle++;
+			return;
+		} else {
+			numshuffle = 0;
+		}
+		if (race == 1) {
+			race = 2;
+		}
 		canMan = true;
-		if (use == "scramble" || use == "flexdo") {
-			if (use == "scramble") {
+		if (["realscramble", "scramble", "flexdo"].includes(use)) {
+			if (use == "scramble" || use == "realscramble") {
 				undo = [];
 				redo = [];
 			}
 			shufflespeed = 5;
 			canMan = true;
-			if(race > 1){
+			if(race > 0 && MINIMODE == "physical"){
 				canMan = false;
-				shuffling = false;
 			}
 		} else if (comstep > 0) {
-			competeprogress = Math.max(competeprogress, getProgress());
+			if (competedata.data.type == "teamblind") {
+				progressUpdate(competedata.data.time == 0 ? Date.now() : false);
+			} else if (getProgress() > competeprogress) {
+				competeprogress = getProgress();
+				progressUpdate();
+			}
+			competeScreenshot();
 		}
 	}
 }
-function waitForCondition(callback, delay) {
-    if (!isAnimating()) {
-        callback();
-    } else {
-        setTimeout(function() {
-            waitForCondition(callback);
-        }, 0 + DELAY * 1000 * delay); // Check every milliseconds
-    }
+function waitForCondition(callback, use = "default") {
+	if (["default", "testalg"].includes(use) && otherShuffling) {
+		return;
+	}
+	if (!isAnimating()) {
+		console.log(use);
+		let delay = DELAY;
+		if (MINIMODE == "physical") {
+			delay = RACE_DELAY_SLIDER.value();
+		}
+		if (["solving", "testalg"].includes(use) && delay > 0) {
+			setTimeout(function() {
+				callback();
+			}, delay * 1000); 
+		} else {
+			callback();
+		}
+
+	} else {
+		setTimeout(function() {
+			waitForCondition(callback, use);
+		}, 0); // Check every milliseconds
+	}
 }
 
 function multiple2(use) {
@@ -7191,6 +8300,7 @@ function undoTillRotate(arr) {
 }
 function flexDo(foo, arr, shift = false) {
 	if (arr.length == 0) return;
+	if (!canMan) return;
 	console.log(INPUT.value());
 	if (shift) {
 		funcMult(foo, undoTillRotate(arr));
@@ -7307,48 +8417,27 @@ function Redo()
 }
 function refreshButtons()
 {
-	if(modnum == 0)
-		document.getElementById("or_instruct5").innerHTML = "Shape Mods";
-	else if(modnum == 1)
-		document.getElementById("or_instruct5").innerHTML = "Bandaged Mods";
-	else 
-		document.getElementById("or_instruct5").innerHTML = "Big Cubes";
-	SPEEDMODE.remove();
-	REGULAR.remove();
-	TIMEDMODE.remove();
-	MOVESMODE.remove();
-	IDMODE.remove();
-	SETTINGS.remove();
-	VOLUME.remove();
-	SPEEDMODE2.remove();
-	REGULAR2.remove();
-	TIMEDMODE2.remove();
-	MOVESMODE2.remove();
-	ONEBYTHREE.remove();
-	SANDWICH.remove();
-	FOURBYFOUR.remove();
-	FIVEBYFIVE.remove();
-	ONEBYFOURBYFOUR.remove();
-	TWOBYTWOBYFOUR.remove();
-	TWOBYTHREEBYFOUR.remove();
-	THREEBYTHREEBYFIVE.remove();
-	THREEBYTHREEBYFOUR.remove();
-	LASAGNA.remove();
-	CUBE3.remove();
-	CUBE4.remove();
-	CUBE5.remove();
-	CUBE6.remove();
-	CUBE7.remove();
-	CUBE8.remove();
-	CUBE9.remove();
-	CUBE10.remove();
-	CUBE11.remove();
-	CUBE12.remove();
-	CUBE13.remove();
-	CUBE14.remove();
-	CUBE15.remove();
-	CUBE16.remove();
-	SWITCHER.remove();
+	const mods = ["Shape Mods", "Bandaged Mods", "Big Cubes", "Cubes for Babies"];
+	document.getElementById("or_instruct5").innerHTML = mods[modnum];
+
+
+	getEl("shapemods").style.display = modnum == 0 ? "block" : "none";
+	getEl("bandagemods").style.display = modnum == 1 ? "block" : "none";
+	getEl("bigcubes").style.display = modnum == 2 ? "block" : "none";
+	getEl("babycubes").style.display = modnum == 3 ? "block" : "none";
+	
+	const elements = [
+		SPEEDMODE, REGULAR, TIMEDMODE, MOVESMODE, IDMODE, SETTINGS, VOLUME,
+		SPEEDMODE2, REGULAR2, TIMEDMODE2, MOVESMODE2, ONEBYTHREE, SANDWICH,
+		FOURBYFOUR, FIVEBYFIVE, ONEBYFOURBYFOUR, ONEBYFIVEBYFIVE, TWOBYTWOBYFOUR,
+		TWOBYTHREEBYFOUR, THREEBYTHREEBYFIVE, THREEBYTHREEBYFOUR, LASAGNA,
+		CUBE3, CUBE4, CUBE5, CUBE6, CUBE7, CUBE8, CUBE9, CUBE10, CUBE11,
+		CUBE12, CUBE13, CUBE14, CUBE15, CUBE16, FOURPLUS, ONEBYTWOBYTWO,
+		ONEBYTWOBYTHREE, SANDWICH2, PLUSLITE, PLUS3x3x2, SNAKE_EYE
+		];
+		
+		elements.forEach(el => el.remove());
+		  
 
 	let d = isthin? 1.5 : 1;
 	let d2 = isthin? 2.5 : 1;
@@ -7386,8 +8475,6 @@ function refreshButtons()
 		}
 	}
 
-	SWITCHER = p.createButton(DIM2 == 50 ? "Switch to 2x2" : "Switch to 3x3");
-	setButton(SWITCHER, "switcher", 'btn btn-primary', 'text-align:center; font-size:20px;', DIM == 50 ? changeTwo : changeThree);
 
 	if (localStorage.audioon === "false") {
 		audioon = false;
@@ -7453,7 +8540,7 @@ function refreshButtons()
 		CUBE6 = p.createButton('Jank 2x2');
 		setButton(CUBE6, "cube6", 'btn btn-info', allcubestyle, change10.bind(null, 0));
 
-		CUBE13 = p.createButton('Sandwhich Cube');
+		CUBE13 = p.createButton('Sandwich Cube');
 		setButton(CUBE13, "cube13", 'btn btn-info', allcubestyle, change17.bind(null, 0));
 
 		CUBE15 = p.createButton('2x2x3');
@@ -7483,30 +8570,54 @@ function refreshButtons()
 
 		CUBE16 = p.createButton('Bandaged 3x3x2');
 		setButton(CUBE16, "cube16", 'btn btn-info', allcubestyle, change20.bind(null, 16, [[0,1], [24,25]]));
-	} else {
+	} else if (modnum == 2) {
 		FOURBYFOUR = p.createButton('4x4');
 		setButton(FOURBYFOUR, "4x4", 'btn btn-info', allcubestyle, () => {switchSize(4); FOURBYFOUR.style('background-color', "#8ef5ee");});
 
 		FIVEBYFIVE = p.createButton('5x5');
 		setButton(FIVEBYFIVE, "5x5", 'btn btn-info', allcubestyle, () => {switchSize(5); FIVEBYFIVE.style('background-color', "#8ef5ee");});
 
-		ONEBYFOURBYFOUR = p.createButton('1x4x4');
-		setButton(ONEBYFOURBYFOUR, "1x4x4", 'btn btn-info', allcubestyle, () => {switchSize(5, "1x4x4", "1x4x4", "3x3x2"); ONEBYFOURBYFOUR.style('background-color', "#8ef5ee");});
-
 		TWOBYTWOBYFOUR = p.createButton('2x2x4');
-		setButton(TWOBYTWOBYFOUR, "2x2x4", 'btn btn-info', allcubestyle, () => {switchSize(4, "2x2x4"); TWOBYTWOBYFOUR.style('background-color', "#8ef5ee");});
+		setButton(TWOBYTWOBYFOUR, "2x2x4", 'btn btn-info', allcubestyle, () => {b_selectdim["2x2x4"](); TWOBYTWOBYFOUR.style('background-color', "#8ef5ee");});
 
 		TWOBYTHREEBYFOUR = p.createButton('2x3x4');
-		setButton(TWOBYTHREEBYFOUR, "2x3x4", 'btn btn-info', allcubestyle, () => {switchSize(5, "2x3x4", "3x2x4", "3x3x2"); TWOBYTHREEBYFOUR.style('background-color', "#8ef5ee");});
+		setButton(TWOBYTHREEBYFOUR, "2x3x4", 'btn btn-info', allcubestyle, () => {b_selectdim["2x3x4"](); TWOBYTHREEBYFOUR.style('background-color', "#8ef5ee");});
 
 		THREEBYTHREEBYFOUR = p.createButton('3x3x4');
-		setButton(THREEBYTHREEBYFOUR, "3x3x4", 'btn btn-info', allcubestyle, () => {switchSize(5, "3x3x4", "4x3x3", "3x3x2"); THREEBYTHREEBYFOUR.style('background-color', "#8ef5ee");});
+		setButton(THREEBYTHREEBYFOUR, "3x3x4", 'btn btn-info', allcubestyle, () => {b_selectdim["3x3x4"](); THREEBYTHREEBYFOUR.style('background-color', "#8ef5ee");});
 
 		THREEBYTHREEBYFIVE = p.createButton('3x3x5');
-		setButton(THREEBYTHREEBYFIVE, "3x3x5", 'btn btn-info', allcubestyle, () => {switchSize(5, "3x3x5"); THREEBYTHREEBYFIVE.style('background-color', "#8ef5ee");});
+		setButton(THREEBYTHREEBYFIVE, "3x3x5", 'btn btn-info', allcubestyle, () => {b_selectdim["3x3x5"](); THREEBYTHREEBYFIVE.style('background-color', "#8ef5ee");});
 
 		LASAGNA = p.createButton('Earth Cube');
-		setButton(LASAGNA, "lasagna", 'btn btn-info', allcubestyle, () => {switchSize(4, "lasagna"); LASAGNA.style('background-color', "#8ef5ee");});
+		setButton(LASAGNA, "lasagna", 'btn btn-info', allcubestyle, () => {b_selectdim["Earth Cube"](); LASAGNA.style('background-color', "#8ef5ee");});
+
+		FOURPLUS = p.createButton('4x4 Plus Cube');
+		setButton(FOURPLUS, "4x4plus", 'btn btn-info', allcubestyle, () => {switchSize(4, "4x4plus"); FOURPLUS.style('background-color', "#8ef5ee");});
+	} else if (modnum == 3) {
+		ONEBYTWOBYTWO = p.createButton('1x2x2');
+		setButton(ONEBYTWOBYTWO, "1x2x2", 'btn btn-info', allcubestyle, () => {b_selectdim["1x2x2"](); ONEBYTWOBYTWO.style('background-color', "#8ef5ee");});
+
+		ONEBYTWOBYTHREE = p.createButton('1x2x3');
+		setButton(ONEBYTWOBYTHREE, "1x2x3", 'btn btn-info', allcubestyle, () => {b_selectdim["1x2x3"](); ONEBYTWOBYTHREE.style('background-color', "#8ef5ee");});
+
+		ONEBYFOURBYFOUR = p.createButton('1x4x4');
+		setButton(ONEBYFOURBYFOUR, "1x4x4", 'btn btn-info', allcubestyle, () => {b_selectdim["1x4x4"](); ONEBYFOURBYFOUR.style('background-color', "#8ef5ee");});
+
+		ONEBYFIVEBYFIVE = p.createButton('1x5x5');
+		setButton(ONEBYFIVEBYFIVE, "1x5x5", 'btn btn-info', allcubestyle, () => {b_selectdim["1x5x5"](); ONEBYFIVEBYFIVE.style('background-color', "#8ef5ee");});
+
+		SANDWICH2 = p.createButton('Sandwich 2x2');
+		setButton(SANDWICH2, "sandwich2x2", 'btn btn-info', allcubestyle, () => {b_selectdim["Sandwich 2x2"](); SANDWICH2.style('background-color', "#8ef5ee");});
+
+		PLUSLITE = p.createButton('Plus Lite');
+		setButton(PLUSLITE, "pluslite", 'btn btn-info', allcubestyle, () => {b_selectdim["Plus Lite"](); PLUSLITE.style('background-color', "#8ef5ee");});
+
+		PLUS3x3x2 = p.createButton('3x3x2 Plus Cube');
+		setButton(PLUS3x3x2, "plus3x3x2", 'btn btn-info', allcubestyle, () => {b_selectdim["3x3x2 Plus Cube"](); PLUS3x3x2.style('background-color', "#8ef5ee");});
+
+		SNAKE_EYE = p.createButton('Snake Eyes');
+		setButton(SNAKE_EYE, "snake_eye", 'btn btn-info', allcubestyle, () => {b_selectdim["Snake Eyes"]();  SNAKE_EYE.style('background-color', "#8ef5ee");});
 	}
 
 }
@@ -7559,6 +8670,7 @@ function notation(move, timed){
 	setLayout();
 	const moveMap = getMove(MAXX, CUBYESIZE, SIZE)
 	if (moveMap.hasOwnProperty(move)) {
+		console.log("TRYNA ANIMATE", move)
 		animate(moveMap[move][0], moveMap[move][1], moveMap[move][2], timed);
 		return;
 	}
@@ -9017,8 +10129,8 @@ else
 }
 function multipleCross3(nb) {
 	if(canMan == true) return;
-	if (document.getElementById("s_RACE2").style.display == "block" || document.getElementById("s_RACE").style.display == "block") return;
-	if(MODE != "normal" && MODE != "timed" && race == 0)
+	if (MINIMODE == "physical" && (document.getElementById("s_RACE2").style.display == "block" || document.getElementById("s_RACE").style.display == "block")) return;
+	if(!["normal", "timed", "bot"].includes(MODE) && race == 0)
 	{
 		flipmode = 0;
 		flipmode2 = 0;
@@ -9032,7 +10144,7 @@ function multipleCross3(nb) {
 		notation(arr[nb]);
 		console.log(nb);
 		moves++;
-		waitForCondition(multipleCross3.bind(null, nb + 1), true);
+		waitForCondition(multipleCross3.bind(null, nb + 1), "solving");
 	}
 	else
 	{
@@ -9048,20 +10160,21 @@ function multipleCross3(nb) {
 }
 function multipleCross2(nb) {
 	if(canMan == true) return;
-	if(MODE != "normal" && MODE != "timed" && race == 0)
+	if(!["normal", "timed", "bot"].includes(MODE) && race == 0)
 	{
 		flipmode = 0;
 		flipmode2 = 0;
 		return;
 	}
-	if (document.getElementById("s_RACE2").style.display == "block" || document.getElementById("s_RACE").style.display == "block") return;
+	if (MINIMODE == "physical" && (document.getElementById("s_RACE2").style.display == "block" || document.getElementById("s_RACE").style.display == "block")) return;
 	setLayout();
 	if (nb < arr.length) {
 		canMan = false;
 		moves++;
 		notation(arr[nb]);
 		console.log(nb);
-		waitForCondition(multipleCross2.bind(null, nb + 1), true);
+		// return;
+		waitForCondition(multipleCross2.bind(null, nb + 1), "solving");
 	}
 	else
 	{
@@ -9082,7 +10195,7 @@ function multipleMod(nb, len, total2, prev)
 	if (nb < arr.length) {
 		canMan = false;
 		notation(arr[nb]);
-		waitForCondition(multipleMod.bind(null, nb + 1, len, total2, prev));
+		waitForCondition(multipleMod.bind(null, nb + 1, len, total2, prev), "other");
 	}
 	else{
 		if(arr.length > 1)
@@ -9102,7 +10215,7 @@ function multipleCross(nb) {
 		canMan = false;
 		notation(arr[nb]);
 		console.log(nb);
-		waitForCondition(multipleCross.bind(null, nb + 1), true);
+		waitForCondition(multipleCross.bind(null, nb + 1), "solving");
 	}
 	else
 	{
@@ -9131,21 +10244,21 @@ document.getElementById('colorPicker3').addEventListener('input', (event) => {
 });
 
 function rgbToHex(r, g, b) {
-    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+	return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
 }
 
 function stringrgbToHex(rgb) {
-    const rgbValues = rgb.match(/\d+/g);  // This extracts the 3 numbers from 'rgb(r, g, b)'
+	const rgbValues = rgb.match(/\d+/g);  // This extracts the 3 numbers from 'rgb(r, g, b)'
 
-    if (rgbValues) {
-        const r = parseInt(rgbValues[0], 10);
-        const g = parseInt(rgbValues[1], 10);
-        const b = parseInt(rgbValues[2], 10);
-        
-        return rgbToHex(r, g, b);
-    }
+	if (rgbValues) {
+		const r = parseInt(rgbValues[0], 10);
+		const g = parseInt(rgbValues[1], 10);
+		const b = parseInt(rgbValues[2], 10);
+		
+		return rgbToHex(r, g, b);
+	}
 
-    return null;  // In case backgroundColor is not set
+	return null;  // In case backgroundColor is not set
 }
 
 function setColors(a, b, c, d) {
@@ -9778,7 +10891,7 @@ function testAlg(){
 		} else {
 			changeArr(inp.value());
 		}
-		multiple(0, false);	
+		multiple(0, false, "testalg");	
 	}
 }
 function raceDetect(){
@@ -9788,24 +10901,7 @@ function raceDetect(){
 	document.getElementById("stepbig").innerHTML = "";
 	document.getElementById("step").innerHTML = "";
 	document.getElementById("fraction").innerHTML = "";
-	console.log("racedetect2");
-	round++;
-	roundresult[0]++;
-	roundresult.push([Math.round(timer.getTime() / 10)/100.0, 0]);
-	if(roundresult[0] < 5){
-		document.getElementById("s_INSTRUCT").innerHTML = "You Win!";
-		document.getElementById("s_instruct").innerHTML = "Press continue to go to the next round!";
-		document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
-		document.getElementById("s_RACE2").style.display = "block";
-		raceTimes();
-	}
-	else{
-		document.getElementById("s_INSTRUCT").innerHTML = "You have defeated the bot!!!";
-		document.getElementById("s_instruct").innerHTML = "Do you want to play again?";
-		document.getElementById("s_instruct2").innerHTML = "Your points: <div style = 'color: green; display: inline;'>" + roundresult[0] + "</div><br>Bot points: <div style = 'color: red; display: inline;'>" + roundresult[1] + "</div>";
-		document.getElementById("s_RACE").style.display = "block";
-		raceTimes();
-	}
+	raceWinner(0);
 	return;
 }  
 //   *************************************
@@ -9867,20 +10963,20 @@ p.touchEnded = () => {
 		}
 	}
 	touchrotate[2] = false;
-	if(MODE == "speed" && race > 1 && timer.getTime() == 0 && !shuffling){
+	if(MODE == "speed" && race > 1 && timer.getTime() == 0 && !shuffling && MINIMODE == "physical"){
 		canMan = true;
 		solveCube();
 	}
 }
 function isTouchingGrayArea(x, y) {
-    // Define gray area bounds (update based on your app's layout)
-    const grayArea = document.getElementById("cnv_div"); // ID for the gray area
-    const rect = grayArea.getBoundingClientRect();
+	// Define gray area bounds (update based on your app's layout)
+	const grayArea = document.getElementById("cnv_div"); // ID for the gray area
+	const rect = grayArea.getBoundingClientRect();
 
-    return x >= rect.left &&
-           x <= rect.right &&
-           y >= rect.top &&
-           y <= rect.bottom;
+	return x >= rect.left &&
+		   x <= rect.right &&
+		   y >= rect.top &&
+		   y <= rect.bottom;
 }
 
 p.mouseDragged = () => {
@@ -10128,13 +11224,13 @@ function toGearCube(move){
 p.windowResized = resized;
 function resized(){
 	let cnv_div = document.getElementById("cnv_div");
-    setWidth(); // Ensure UI elements are adjusted
-    const isMobile = window.matchMedia("(max-width: " + MAX_WIDTH + ")").matches;
-    const WINDOW = isMobile ? 0.6 : 0.9;
-    const width = DEBUG ? (p.windowWidth / 2) : cnv_div.offsetWidth;
-    const height = window.innerHeight * WINDOW;
-    p.resizeCanvas(width, height, p.WEBGL);
-    PICKER.buffer.resizeCanvas(width, height);
+	setWidth(); // Ensure UI elements are adjusted
+	const isMobile = window.matchMedia("(max-width: " + MAX_WIDTH + ")").matches;
+	const WINDOW = isMobile ? 0.6 : 0.9;
+	const width = DEBUG ? (p.windowWidth / 2) : cnv_div.offsetWidth;
+	const height = window.innerHeight * WINDOW;
+	p.resizeCanvas(width, height, p.WEBGL);
+	PICKER.buffer.resizeCanvas(width, height);
 	SOLVE.html(window.matchMedia("(max-width: " + MAX_WIDTH + ")").matches ? 'Solve' : 'Autosolve');
 	if (MODE == "normal") {
 		if (ismid) {
@@ -10160,8 +11256,8 @@ p.draw = () => {
 		CAM.removeMouseListeners();
 
 		if (arraysEqual(hoveredColor, p.color(BACKGROUND_COLOR).levels)) {
-            return; // Skip further event handling to allow scrolling
-        }
+			return; // Skip further event handling to allow scrolling
+		}
 	}
 	
 	if (hoveredColor && getCubyByColor(hoveredColor) && !(p.mouseIsPressed && p.touches.length == 0)) {
@@ -10276,6 +11372,133 @@ function renderCube() {
 			}
 		}
 	}
+function sendMessage(type, message, id, names, image) {;
+	if (message === "") return; // Prevent empty messages
+
+	let str = "";
+	
+	// Function to safely escape HTML
+	function escapeHTML(text) {
+		const element = document.createElement('div');
+		if (text) element.innerText = text;
+		return element.innerHTML;
+	}
+	
+	if (type == "person") {
+		if (id == socket.id) {
+			str += `<span style="color:blue">`;
+		}
+		if (id != previouschatid) {
+			if (getEl("allmessages").innerText != "") {
+				str += `<div style="padding-top: 10px;"></div>`;
+			}
+			str += `<b>${escapeHTML(names[id])}</b><br>`;
+		}
+		previouschatid = id;
+		if (id == socket.id) {
+			str += `</span>`;
+		}
+		const special = {
+			"/:)"  : "🙂",
+			"/;)"  : "😉",
+			"/:D"  : "😁",
+			"/:P"  : "😛",
+			"/:p"  : "😛",
+			"/:O"  : "😮",
+			"/B)"  : "😎",
+			"/<3"  : "❤️",
+			"/:|"  : "😐",
+			"/:/"  : "😕",
+		}
+		let stringarr = message.split(" ");
+		for (let i = 0; i < stringarr.length; ++i) {
+			if (special.hasOwnProperty(stringarr[i])) {
+				stringarr[i] = special[stringarr[i]];
+			}
+		}
+
+		const replace = {
+			"/tickle" : `<img width = "200px;" src = "https://images.shoutwiki.com/sanrio/thumb/0/0e/Mr_Tickle.png/200px-Mr_Tickle.png"/>`,
+			"/moley" : `<img width = "200px;" src = "https://i.ytimg.com/vi/EhmN8Pa1g6c/maxresdefault.jpg"/>`,
+			"/crown" : `<img width = "100px;" src = "../../images/Compete/cubecrown.gif"/>`
+		}
+
+		if (replace.hasOwnProperty(message)) {
+			message = replace[message];
+			image = true;
+		} else {
+			message = stringarr.join(" ");
+		}
+
+		if (message.includes("@everyone")) {
+			str += `<span style="background-color:#FBFFB2">`;
+		}
+		if (message.includes(`@${localStorage.username}`)) {
+			str += `<span style="background-color:#B2FFB7">`;
+		}
+		if (!image) {
+			str += escapeHTML(message) + "<br>";
+		} else {
+			str += message + "<br>";
+		}
+
+		if (message.includes(`@${localStorage.username}`)) {
+			str += `</span>`;
+		}
+		if (message.includes("@everyone")) {
+			str += `</span>`;
+		}
+	} else if (type == "joined") {
+		str += `<i style="font-size: 12px;">${escapeHTML(message.id == socket.id ? "You" : message.name)} joined room ${escapeHTML(message.room)}</i><br>`;
+		previouschatid = "";
+	} else if (type == "left") {
+		str += `<i style="font-size: 12px;">${escapeHTML(message.id == socket.id ? "You" : message.name)} left room ${escapeHTML(message.room)}</i><br>`;
+		previouschatid = "";
+	}
+	getEl("allmessages").innerHTML += str;
+	
+}
+
+document.getElementById("message-input").addEventListener("paste", function(event) {
+	console.log("pasting");
+	const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+
+	for (let item of items) {
+		if (item.type.indexOf("image") === 0) {
+			const file = item.getAsFile();
+			const reader = new FileReader();
+
+			reader.onload = function(e) {
+				sendPastedImage(e.target.result); // Send image to chat
+			};
+
+			reader.readAsDataURL(file);
+		}
+	}
+});
+
+function sendPastedImage(imageDataUrl) {
+	socket.emit("send-message", `<img class="chat-image" style="width: 200px; height: 100px; object-fit: contain;" src="${imageDataUrl}" alt="Pasted Image"><br>`,
+		room, localStorage.username, true);
+}
+
+socket.on("sending-message", (message, id, names, image) => {
+	sendMessage("person", message, id, names, image)
+})
+
+socket.on("joined_room", (room, id, name, image, stage) => {
+	if (id == socket.id && stage == "lobby") {
+		getEl("practice_container").style.display = "block";
+		setDisplay("none", ["keymap", "input2"]);
+		setDisplay("inline", ["shuffle_div", "reset_div", "outertime"]);
+	}
+	sendMessage("joined", {room : room, id : id, name : name}, image)
+})
+
+socket.on("left_room", (room, id, names, image) => {
+	sendMessage("left", {room : room, id : id, name : names[id]}, image)
+})
+
 $(document).on("keypress", "#test_alg_div", function(e){ //enter
 	if(e.which == 13){
 		testAlg();
@@ -10291,6 +11514,23 @@ $(document).on("keypress", "#password", function(e){
 		document.getElementById('l_submit').click();
 	}
 });
+$(document).on("keypress", "#message-input", function(e){
+	if (e.which == 13)
+		document.getElementById('send-btn').click();
+});
+
+getEl("send-btn").onclick = () => {
+	if (getEl("message-input").value == "/c") {
+		getEl("message-input").value = "";
+		getEl("allmessages").innerHTML = "";
+		previouschatid = "";
+	} else if(getEl("message-input").value != "") {
+		socket.emit("send-message", getEl("message-input").value, room, localStorage.username);
+		getEl("message-input").value = "";
+		document.getElementById("message-input").focus();
+	}
+};
+
 function isIpad(){
 	return ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) && !((window.matchMedia("(max-width: " + MAX_WIDTH + ")").matches)) 
 	&& !matchMedia('(pointer:fine)').matches;
@@ -10326,10 +11566,41 @@ function sideSolved(color)
 	}
 	return false;
 }
+function isRectangle(cubies) {
+	console.log("t", CUBE[cubies[0]], cubies);
+	if (cubies.length == 0) {
+		return true;
+	}
+	let minx = CUBE[cubies[0]].x;
+	let maxx = CUBE[cubies[0]].x;
+	let miny = CUBE[cubies[0]].y;
+	let maxy = CUBE[cubies[0]].y;
+	let minz = CUBE[cubies[0]].z;
+	let maxz = CUBE[cubies[0]].z;
+	cubies.forEach(cuby => {
+		minx = Math.min(CUBE[cuby].x, minx);
+		maxx = Math.max(CUBE[cuby].x, maxx);
+		miny = Math.min(CUBE[cuby].y, miny);
+		maxy = Math.max(CUBE[cuby].y, maxy);
+		minz = Math.min(CUBE[cuby].z, minz);
+		maxz = Math.max(CUBE[cuby].z, maxz);
+	});
+	let corners = 0;
+	cubies.forEach(cuby => {
+		if ([minx, maxx].includes(CUBE[cuby].x) && [miny, maxy].includes(CUBE[cuby].y) 
+			&& [minz, maxz].includes(CUBE[cuby].z)) {
+			corners++;
+		}
+	})
+	let numsquished = +(minx == maxx) + (miny == maxy) + (minz == maxz)
+	console.log("DIMS IS ", numsquished)
+	return corners == 4 || numsquished;
+}
 function uniform(dir) {
 	let base = 0;
 	for (let x = -MAXX; x <= MAXX; x += CUBYESIZE) {
 		let numcubies = 0;
+		let cubies = [];
 		for (let y = -MAXX; y <= MAXX; y += CUBYESIZE) {
 			for (let z = -MAXX; z <= MAXX; z += CUBYESIZE) {
 				let cuby;
@@ -10342,10 +11613,16 @@ function uniform(dir) {
 				if (dir == "z") {
 					cuby = getCubyFromPos(y, z, x);
 				}
-				numcubies += cuby != -1 ? 1 : 0;
+				if (cuby != -1) {
+					numcubies++;
+					cubies.push(cuby)
+				}
 			}
 		}
-		console.log(numcubies);
+		console.log(numcubies, !isRectangle(cubies), cubies);
+		if (!isRectangle(cubies)) {
+			return false;
+		}
 		if (base == 0) {
 			base = numcubies;
 		} else if (base != numcubies && numcubies != 0) {
@@ -10372,6 +11649,15 @@ function isSolved()
 				}
 			}
 			if(same){
+				return true;
+			}
+		}
+		return false;
+	} else if (["sandwich2x2"].includes(DIM)) {
+		for(let i = 0; i < 6; i+=2){
+			let a = layout[i][0][0][0], b = layout[i][0][2][0];
+			let c = layout[i][2][0][0], d = layout[i][2][2][0];
+			if(a == b && b == c && c == d ){
 				return true;
 			}
 		}
@@ -10404,9 +11690,9 @@ function isSolved()
 				top: [top, getColor(CUBE[curindex].right.levels)],
 				bottom: [bottom, getColor(CUBE[curindex].left.levels)],
 				back: [back, getColor(CUBE[curindex].bottom.levels)],
-                front: [front, getColor(CUBE[curindex].top.levels)],
-                right: [right, getColor(CUBE[curindex].front.levels)],
-                left: [left, getColor(CUBE[curindex].back.levels)],
+				front: [front, getColor(CUBE[curindex].top.levels)],
+				right: [right, getColor(CUBE[curindex].front.levels)],
+				left: [left, getColor(CUBE[curindex].back.levels)],
 			}
 			const neighbors = getNeighborsArr(curindex);
 			const map = {"bottom":0, "top":1, "front":2, "back":3, "right":4, "left":5}
@@ -10421,7 +11707,13 @@ function isSolved()
 					return false;
 				}
 			}
-        }
+			top = compare.top[0];
+			bottom = compare.bottom[0];
+			back = compare.back[0];
+			front = compare.front[0];
+			right = compare.right[0];
+			left = compare.left[0];
+		}
 		return true;
 	}
 }
@@ -10439,8 +11731,8 @@ function median(values){
 	return (values[half - 1] + values[half]) / 2.0;
   }
 function myHandler(e) {
-    downloadAll();
-    return false;
+	downloadAll();
+	return false;
 }
 function settingsDefault(){
 	allcubies = false;
@@ -10518,9 +11810,9 @@ document.onkeydown = function (e) {
   };
 getEl("compete_rounds").addEventListener("input", function () {
 	this.value = parseInt(this.value);
-    if (this.value != "" && this.value <= 0 || isNaN(this.value)) {
-        this.value = 1;
-    }
+	if (this.value != "" && this.value <= 0 || isNaN(this.value)) {
+		this.value = 1;
+	}
 	competeSettings();
 });
 function arrowPaint(dir) {
@@ -10559,9 +11851,31 @@ function arrowPaint(dir) {
 		} 
 	}
 }
+
+function getOp() {
+	let opponent = "";
+	competedata.userids.forEach(id => {
+		if (id != socket.id) opponent = id;
+	})
+	return opponent;
+}
+
+function competeScreenshot() {
+	if (competedata.data.type != "1v1") {
+		return;
+	}
+	let str = p.canvas.toDataURL('image/jpeg');
+	console.log("room is ", room);
+	socket.emit("send-screenshot", str, getOp());
+}
+
+socket.on("update-screenshot", (screenshot) => {
+	getEl("opponent_ss").src = screenshot;
+})
+
 document.getElementById("bannercube").addEventListener("click", function(event) { //news
-    event.preventDefault();
-    competemode();
+	event.preventDefault();
+	movesmode();
 });
 document.addEventListener("keydown", (event) => { //paint hotkey
 	if (MODE == "paint" && (!activeKeys || (activeKeys.size < 2 || (p.keyIsDown(p.SHIFT) && activeKeys.size < 3)))) {
@@ -10580,8 +11894,9 @@ document.addEventListener("keydown", (event) => { //paint hotkey
 let activeKeys = new Set();
 document.onkeyup = function(e) { //space
 	if (e.keyCode == 32 && getEl("outertime").style.color == "green") {
+		console.log(MODE == "speed", race > 1, timer.getTime() == 0, !shuffling, MINIMODE)
 		getEl("outertime").style.color = document.body.style.color;
-		if(MODE == "speed" && race > 1 && timer.getTime() == 0 && !shuffling){
+		if(MODE == "speed" && race > 1 && timer.getTime() == 0 && !shuffling && MINIMODE == "physical"){
 			canMan = true;
 			solveCube();
 		}
@@ -10592,7 +11907,7 @@ document.onkeydown = function(event) {
 	activeKeys.add(event.code);
 	if(activeKeys.size === 1 && activeKeys.has('Space') && MODE == "speed" && document.getElementById("s_RACE2").style.display == "block"){
 		speedRace2();
-	} else if (event.keyCode == 13) { //enter
+	} else if (event.keyCode == 13 && document.activeElement !== document.getElementById("message-input")) { //enter
 		if (getEl("s_start").style.display == "block") {
 			practicePLL();
 		} else if (getEl("okban").style.display == "block") {
@@ -10605,10 +11920,16 @@ document.onkeydown = function(event) {
 			speedRace2();
 		} else if (getEl("startmatch").style.display == "block") {
 			startMatch();
-		} else if (getEl("creating_match").style.display == "block") {
+		} else if (getEl("creating_match").style.display == "block" && getEl("finish_match").style.display == "block") {
 			finishMatch();
 		} else if (getEl("continuematch").style.display == "block") {
 			continueMatch();
+		} else if (getEl("competeswitch").style.display == "block") {
+			switchBlindfold();
+		} else if (getEl("peekbutton").style.display == "block") {
+			toggleOverlay(false);
+		} else if (getEl("s_RACE2").style.display == "block") {
+			speedRace2();
 		}
 	} else if (event.keyCode == 27) { //escape
 		if (getEl("okban").style.display == "block") {
@@ -10622,6 +11943,48 @@ document.getElementById('account').addEventListener('click', function() {
 document.getElementById('login').addEventListener('click', function() {
 	document.getElementById('l_forgot').scrollIntoView({ behavior: 'smooth' });
 });
+getEl("competelink").addEventListener("click", function(event) {
+	event.preventDefault();
+	navigator.clipboard.writeText(`${window.location.host}/?room=${room}`);
+	getEl("competelink").innerHTML = `<i class="bi bi-check2"></i>`;
+	setTimeout(() => {
+		getEl("competelink").innerHTML = `<i class="bi bi-link"></i>`;
+	}, 1000);
+});
+
+getEl("editcompete").addEventListener("click", function(event) {
+	event.preventDefault();
+	createMatch(false);
+});
+
+const competitions = {
+	"1v1": "Get 1 point for being the fastest to solve the cube each round. 2 players required.",
+	group: "Get 1 point for being the fastest to solve the cube each round. No restrictions on player count.",
+	teamblind: `A team of 2 players take turns being blind. 
+		After ${SWITCHTIME} seconds, the team can switch who is blinded, and must wait another ${SWITCHTIME} seconds for the next switch. <i>Only the blindfolded player can turn the cube.</i> Mouse turning recommended.`
+};
+
+function competeText() {
+	if (competitions.hasOwnProperty(compete_type)) {
+		return competitions[compete_type];
+	}
+	return "";
+}
+
+Object.entries(competitions).forEach(([id, text]) => {
+	const el = getEl("compete_" + id);
+	el.addEventListener("mouseenter", () => {
+		if (compete_type === "") getEl("match_description").innerHTML = text;
+	});
+	el.addEventListener("mouseleave", () => {
+		getEl("match_description").innerHTML = competeText();
+	});
+});
+  
+getEl("compete_search").oninput = () => {
+	competeSelectButtons();
+}
+
 window.addEventListener('keydown', (e) => {
 	if (e.target.localName != 'input') {   // if you need to filter <input> elements
 		switch (e.keyCode) {
@@ -10654,10 +12017,10 @@ Mo50 virtual
 65.56
 64.48
 Mo50 virtual 2x2: 34.34, 33.08, 29.84, 28.26
-Jaden WR 4x4: 139.71
+Jaden WR 4x4: 139.71 123.59
 Jaden WR 3x3: 25.4, 20.9, 19.7, 16.6, 16.07, 13.73, 11.3
-Jaden WR 2x2: 3.88
-3x3 PLL Attack: 6.9, 6.84, 6.2, 5.01
+
+3x3 PLL Attack: 6.9, 6.84, 6.2, 5.01 4.86
 3x3 OLL Attack: 4.66, 4.31, 3.2, 3.06
 3x3 Easy: 0.8, 0.52s
 3x3 Medium: 15.4s, 13.58s

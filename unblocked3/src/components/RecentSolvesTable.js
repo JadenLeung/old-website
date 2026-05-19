@@ -169,7 +169,7 @@ if (isAppleDevice) {
 		shareBtn.onclick = () => {
 			console.log("Clicking ", cubename)
 			const scrambleTypeText = scrambletype !== "Normal" ? `\nScramble Type: ${scrambletype}` : '';
-			const shareText = `I solved the ${cubename}!\nTime: ${time}${scrambleTypeText}\nScramble: ${scramble || 'N/A'}\nhttps://virtual-cube.net/`;
+			const shareText = `I solved the ${cubename}!\nTime: ${time}${scrambleTypeText}\nScramble: ${scramble || 'N/A'}\nhttps://jadenleung.github.io/old-website/unblocked3/`;
 			const smsUrl = `sms:&body=${encodeURIComponent(shareText)}`;
 			window.open(smsUrl, '_blank');
 		};

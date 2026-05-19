@@ -27,9 +27,9 @@ if (!userId && window.crypto) {
 
   localStorage.userId = userId;
 }
-// const socket = io("https://giraffe-bfa2c4acdpa4ahbr.canadacentral-01.azurewebsites.net/");
+const socket = io("bruh");
 // const socket = io("http://localhost:3003", {auth: {userId}});
-const socket = io("https://api.virtual-cube.net:3003/", {auth: {userId}});
+// let socket = null;
 
 
 //Thanks to Antoine Gaubert https://github.com/angauber/p5-js-rubik-s-cube
@@ -2911,7 +2911,6 @@ function changeTwo(switchstart = true)
 	CUBENAME = "2x2";
 	if (switchstart)
 		localStorage.startcube = 2;
-	modeData("twobytwo");
 	THREEBYTHREE.class('btn btn-light btn-sm');
 	TWOBYTWO.class('btn btn-warning btn-sm');
 	SIZE_SLIDER2.remove();
@@ -3643,7 +3642,6 @@ function Custom()
 	document.getElementById("custom4").style.display = "none";
 	INPUT.value("Normal");
 	SCRAM.value("Normal");
-	modeData("customshape");
 	switchCube(SEL7.value());
 	change9();
 }
@@ -3670,7 +3668,6 @@ function CustomBandage(){
 	}
 	changeCam(3);
 	doneBandage();
-	modeData("custombandage");
 	ban9();
 	switchCube(BANDAGE_SELECT.value());
 }
@@ -3805,7 +3802,6 @@ function startCube() {
 	else changeThree();
 }
 function regular(nocustom){
-	modeData("normal");
 	MINIMODE = "normal";
 	if(MODE != "timed" && MODE != "cube" && MODE != "normal")
 	{
@@ -3930,7 +3926,6 @@ function timedmode()
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
 	changeInput();
 	
-	modeData("stats");
 }
 function cubemode()
 {
@@ -3952,7 +3947,6 @@ function cubemode()
 	if(modnum == 1) document.getElementById("customb").style.display = "block"; 
 	else document.getElementById("customb").style.display = "none"; 
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
-	modeData("other");
 }
 function idmode()
 {
@@ -3985,8 +3979,6 @@ function idmode()
 	}
 
 	document.getElementById("test_alg_span").innerHTML = "Paste ID here:";
-
-	modeData("id");
 }
 function sinceOct12(what) {
 	const startDate = new Date('2025-10-12');
@@ -4021,7 +4013,6 @@ function getColoredCuby(index) {
 	return obj;
 }
 function paintmode() {
-	modeData("paint");
 	activeKeys.clear();
 	MODE = "paint";
 	special[2] = savesetup;
@@ -4118,7 +4109,6 @@ function finishpaint() {
 document.getElementById("compete").onclick = competemode;
 function competemode() {
 	displayPublicRooms();
-	modeData("compete");
 	regular();
 	setDisplay("none", ["mode", "mode2", "mode3", "mode7", "test_alg_div", "ID1", "input", "scram", "challengeback", "settings", "timeselect","type3",
 			"or_instruct", "or_instruct2", "or_instruct4", "recent_solves_container", "keymap", "show_keyboard"
@@ -5972,7 +5962,6 @@ document.querySelectorAll('button').forEach(button => {
     });
 });
 function challengemode() {
-	modeData("challenge");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6428,7 +6417,6 @@ async function fadeInText(o, text, color = "red", el = "dnf", time = 600, fontSi
 }
 
 function suggestMode() {
-	modeData("suggest");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6479,7 +6467,6 @@ async function submitSuggestion() {
 
 document.getElementById("account").onclick = accountmode;
 function accountmode() {
-	modeData("accountmode");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6507,7 +6494,6 @@ function accountmode() {
 document.getElementById("login").onclick = loginmode;
 document.getElementById("l_link").onclick = () => MODE == "account" ? loginmode() : accountmode();
 function loginmode() {
-	modeData("loginmode");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6639,7 +6625,6 @@ function speedmode()
 	INPUT.selected("Normal");
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
 	updateScores();
-	modeData("speed");
 }
 function movesmode()
 {
@@ -6685,7 +6670,6 @@ function movesmode()
 	mastep = 0;
 	INPUT.selected("Normal");
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
-	modeData("moves");
 }
 function setSettings(obj) {
 	SPEED_SLIDER.value(obj.speed);
@@ -7073,7 +7057,6 @@ function easy()
 		} else {
 			setScore(DIM == 50 ? "easy" : "easy2", total);
 		}
-		modeData("speedwin");
 		easystep = 0;
 		medstep = 0;
 		pllstep = 0;
@@ -7651,7 +7634,6 @@ function speedRace(type){
 		${type == "physical" ? "You will be racing the bot using a <b>Physical</b> Rubik's cube." : ""}`;
 	setDisplay("block", ["r_sliders"]);
 	setDisplay("none", ["slider_div", "speed", "delaywhole"]);
-	modeData("race");
 	canMan = true;
 }
 function speedRace2(){
@@ -8745,8 +8727,6 @@ function shuffleCube(override = false) {
 		return;
 	}
 
-
-	modeData("scramble");
 	console.log("shuffling");
 	shufflespeed = 2;
 	moves = 0;
@@ -10446,7 +10426,6 @@ function solveCube()
 {
 	if(canMan == false)
 	return;
-	modeData("solvecube");
 	setLayout();
 	if(!isSolved())
 	{

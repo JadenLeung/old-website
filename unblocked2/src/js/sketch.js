@@ -6053,27 +6053,19 @@ async function submitAccount() {
 	}
 	document.getElementById("l_message").innerHTML = "Attemping to create account...";
 	//const userdata = await repeatUntilSuccess(() => getUsers());
-	const userdata = await getUsers();
-	console.log("UserData", userdata);
-
-	let matches = false;
-	
-	userdata.forEach((obj) => {
-		if (obj.username == username) {
-			document.getElementById("l_message").innerHTML = "";
-			matches = true;
-		}
-	})
-
-	if (matches) {
+	const match = await hasUser(username, password);
+	console.log("Match", match);
+	if (match.user) {
 		alert("This username is taken.")
 		return;
 	}
 	document.getElementById('password').value = '';
-	await saveData(username, password, "PUT", false);
+	const response = await saveData(username, password, "PUT", false);
 	document.getElementById("l_message").innerHTML = "Account Created! You are logged in.";
 	localStorage.username = username;
+	localStorage.token = response.token;
 }
+
 function successSQL(text, id = "logindesc") {
 	document.getElementById(id).innerHTML = text;
 	setTimeout(() => {

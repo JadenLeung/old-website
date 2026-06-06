@@ -27,7 +27,8 @@ if (!userId && window.crypto) {
 
   localStorage.userId = userId;
 }
-const socket = io("bruh");
+const socket = io("https://giraffe-bfa2c4acdpa4ahbr.canadacentral-01.azurewebsites.net/");
+// const socket = io("bruh");
 // const socket = io("http://localhost:3003", {auth: {userId}});
 // let socket = null;
 

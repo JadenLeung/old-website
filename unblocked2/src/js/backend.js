@@ -1,4 +1,6 @@
 let visited = {};
+const rootURL = "https://elephant4.azurewebsites.net";
+// const rootURL = "http://localhost:3002";
 
 export async function getIP() {
 	try {
@@ -28,7 +30,7 @@ export async function modeData(mode) {
     }
     const TIME = getDate();
 	// console.log("IP is", IP, "TIME is", TIME);
-	fetch("https://elephant4.azurewebsites.net/api/history2", {
+	fetch(`${rootURL}/api/history2`, {
 		method: "POST",
 		body: JSON.stringify([{
 		  ipaddr: IP,
@@ -43,25 +45,30 @@ export async function modeData(mode) {
 }
 
 
-export async function getUsers() {
-    const url = "https://elephant4.azurewebsites.net/api/users2";
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Response status: ${response.status}`);
-      }
+export async function getUserData() {
+  const token = localStorage.token; 
+  const url = `${rootURL}/api/users2`; 
   
-      const json = await response.json();
-      console.log(json);
-      return json;
-    } catch (error) {
-      console.error(error.message);
-      //return null;
-    }
-  }
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
 
-  export async function matchPassword(username, password) {
-    const url = `https://elephant4.azurewebsites.net/api/users2?username=${username}&password=${password}`;
+    const json = await response.json();
+    console.log(json);
+    return json;
+  } catch (error) {
+    console.error(error.message);
+    //return null;
+  }
+}
+
+  export async function hasUser(username, password) {
+    const url = `${rootURL}/api/hasuser?username=${username}&password=${password}`;
     try {
       const response = await fetch(url);
       if (!response.ok) {
@@ -77,9 +84,29 @@ export async function getUsers() {
   }
 
   export async function putUsers(data, method) {
-    //data = {waitfor: 0, ...data};
+  const token = localStorage.token; 
+  console.log("Attemping to upload");
+  try {
+    const response = await fetch(`${rootURL}/api/users2`, {
+      method: method,
+      body: JSON.stringify([data]),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8",
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const json = await response.json();
+    return json;
+  } catch (err) {
+    console.log("Error " + err);
+    throw err;
+  }
+}
+
+  export async function putSuggestion(data, method) {
     console.log("Attemping to upload");
-    await fetch("https://elephant4.azurewebsites.net/api/users2", {
+    await fetch(`${rootURL}/api/suggestions`, {
 		method: method,
 		body: JSON.stringify([data]),
 		headers: {

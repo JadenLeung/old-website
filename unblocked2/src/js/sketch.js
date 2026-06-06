@@ -5,7 +5,7 @@ import {weeklyscrambles} from '../data/weekly.js'
 import {patterndata} from '../data/pattern.js'
 import { getMove } from '../data/notation.js';
 import {DIMS_OBJ} from '../data/dims.js';
-import {modeData, getUsers, printUsers, putUsers, matchPassword} from "./backend.js";
+import {modeData, getUserData, printUsers, putUsers, hasUser, putSuggestion} from "./backend.js";
 // const socket = io("https://giraffe-bfa2c4acdpa4ahbr.canadacentral-01.azurewebsites.net/");
 // const socket = io("http://localhost:3003");
 const socket = io("https://api.virtual-cube.net:3003/");
@@ -1428,6 +1428,11 @@ p.setup = () => {
 
 	if (!localStorage.username) 
 		localStorage.username = "signedout";
+
+	if(localStorage.username != "signedout" && !localStorage.token) {
+		signOut();
+	}
+
 	const queryString = window.location.search;
 	const urlParams = new URLSearchParams(queryString);
 	const r = urlParams.get('room')
@@ -5954,66 +5959,74 @@ async function saveData(username, password, method, al) {
   }
 
 document.getElementById("loaddata").onclick = () => loadData(true);
-async function loadData(times) {
+async function loadData(times, userdata) {
 	if (document.getElementById("logindesc").innerHTML == "") {
 		document.getElementById("logindesc").innerHTML = "Loading data...";
 	}
-	const userdata = await repeatUntilSuccess(() => getUsers());
-	let index = 0;
-	if (!userdata[0]) {
+	if (!userdata) {
+		console.log("Self Load")
+		userdata = await repeatUntilSuccess(() => getUserData(localStorage.username));
+	}
+	if (userdata.error) {
+		alert("Invalid token, signing out");
+		signOut();
+		getEl("logindesc").innerHTML = "";
+		loginmode();
+		return;
+	}
+	if (!userdata) {
 		alert("Load failed, please try again");
 		document.getElementById("logindesc").innerHTML = "";
 		return;
 	}
-	userdata.forEach((obj, i) => {
-		if (localStorage.username == obj.username) {
-			index = i;
-		}
-	});
-	console.log("Userdata is ", userdata[index]);
+	console.log("Userdata is ", userdata);
 	if (times) {
 		let params = ["easy", "medium", "oll", "pll", "easy2", "oll2", "pbl2", "blind2x2", "blind3x3", 
-			"marathon", "marathon2","marathon3","race2x2","race3x3","marathon4","marathon5"];
+			"marathon", "marathon2","marathon3","race2x2","race3x3","marathon4","marathon5","marathonglow"];
 		params.forEach((param) => {
-			if (userdata[index][param] != -1 && (localStorage[param] == undefined || localStorage[param] == -1 || +localStorage[param] > +userdata[index][param]))
-				localStorage[param] = userdata[index][param];
+			if (userdata[param] != -1 && (localStorage[param] == undefined || localStorage[param] == -1 || +localStorage[param] > +userdata[param]))
+				localStorage[param] = userdata[param];
 		})
 		params = ["m_easy", "m_medium"];
 		params.forEach((param) => {
-			console.log(userdata[index][param], localStorage[param], (localStorage[param] < userdata[index][param]))
-			if (userdata[index][param] != -1 && (localStorage[param] == undefined || localStorage[param] == -1 || +localStorage[param] < +userdata[index][param])) {
-				localStorage[param] = userdata[index][param];
+			console.log(userdata[param], localStorage[param], (localStorage[param] < userdata[param]))
+			if (userdata[param] != -1 && (localStorage[param] == undefined || localStorage[param] == -1 || +localStorage[param] < +userdata[param])) {
+				localStorage[param] = userdata[param];
 			}
 		})
 		params = ["c_today", "c_today2", "c_week", "c_day", "c_day2", "cdate", "cdate2","cdate3", "c_day_bweek", "c_day2_bweek"];
 		params.forEach((param) => {
-				localStorage[param] = userdata[index][param];
+				localStorage[param] = userdata[param];
 		})
 	}
 	successSQL("Loaded data");
 	updateScores();
-	setSettings(userdata[index]);
+	setSettings(userdata);
 }
-document.getElementById("signout").onclick = () => {
+document.getElementById("signout").onclick = signOut;
+
+function signOut(){
 	document.getElementById("l_message").innerHTML = "";
 	localStorage.username = "signedout";
-};
+	localStorage.token = "";
+}
+
 document.getElementById("l_submit").onclick = () => MODE == "account" ? submitAccount() : submitLogin();
 async function submitLogin() {
 	const username = document.getElementById("username").value;
 	if (username == "") {
-		alert("Please enter a username");
+		alert("Please enter a username.");
 		return;
 	}
 	const password = document.getElementById("password").value;
 	if (password == "") {
-		alert("Please enter a password");
+		alert("Please enter a password.");
 		return;
 	}
 	document.getElementById("l_message").innerHTML = "Attemping to log in...";
-	const success = await repeatUntilSuccess(() => matchPassword(username, password));
+	const response = await repeatUntilSuccess(() => hasUser(username, password));
 	document.getElementById('password').value = '';
-	if (!success) {
+	if (!response.user || !response.password) {
 		alert("Incorrect credentials");
 		document.getElementById("l_message").innerHTML = "";
 		return;
@@ -6021,10 +6034,12 @@ async function submitLogin() {
 		loginmode();
 		document.getElementById("l_message").innerHTML = "Logged in successfully! Your settings and high scores have been updated.";
 		localStorage.username = username;
-	
-		loadData(true);
+		localStorage.token = response.token;
+		let userData = response.userData;
+		loadData(true, userData);
 	}
 }
+
 async function submitAccount() {
 	const username = document.getElementById("username").value;
 	if (username == "") {

@@ -1581,6 +1581,11 @@ p.setup = () => {
 
 	if (!localStorage.username) 
 		localStorage.username = "signedout";
+
+	if(localStorage.username != "signedout" && !localStorage.token) {
+		signOut();
+	}
+
 	const queryString = window.location.search;
 	const urlParams = new URLSearchParams(queryString);
 	const r = urlParams.get('room')
@@ -2912,6 +2917,7 @@ function changeTwo(switchstart = true)
 	CUBENAME = "2x2";
 	if (switchstart)
 		localStorage.startcube = 2;
+	modeData("twobytwo");
 	THREEBYTHREE.class('btn btn-light btn-sm');
 	TWOBYTWO.class('btn btn-warning btn-sm');
 	SIZE_SLIDER2.remove();
@@ -3643,6 +3649,7 @@ function Custom()
 	document.getElementById("custom4").style.display = "none";
 	INPUT.value("Normal");
 	SCRAM.value("Normal");
+	modeData("customshape");
 	switchCube(SEL7.value());
 	change9();
 }
@@ -3669,6 +3676,7 @@ function CustomBandage(){
 	}
 	changeCam(3);
 	doneBandage();
+	modeData("custombandage");
 	ban9();
 	switchCube(BANDAGE_SELECT.value());
 }
@@ -3803,6 +3811,7 @@ function startCube() {
 	else changeThree();
 }
 function regular(nocustom){
+	modeData("normal");
 	MINIMODE = "normal";
 	if(MODE != "timed" && MODE != "cube" && MODE != "normal")
 	{
@@ -3927,6 +3936,7 @@ function timedmode()
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
 	changeInput();
 	
+	modeData("stats");
 }
 function cubemode()
 {
@@ -3948,6 +3958,7 @@ function cubemode()
 	if(modnum == 1) document.getElementById("customb").style.display = "block"; 
 	else document.getElementById("customb").style.display = "none"; 
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
+	modeData("other");
 }
 function idmode()
 {
@@ -3980,6 +3991,8 @@ function idmode()
 	}
 
 	document.getElementById("test_alg_span").innerHTML = "Paste ID here:";
+
+	modeData("id");
 }
 function sinceOct12(what) {
 	const startDate = new Date('2025-10-12');
@@ -4014,6 +4027,7 @@ function getColoredCuby(index) {
 	return obj;
 }
 function paintmode() {
+	modeData("paint");
 	activeKeys.clear();
 	MODE = "paint";
 	special[2] = savesetup;
@@ -4110,6 +4124,7 @@ function finishpaint() {
 document.getElementById("compete").onclick = competemode;
 function competemode() {
 	displayPublicRooms();
+	modeData("compete");
 	regular();
 	setDisplay("none", ["mode", "mode2", "mode3", "mode7", "test_alg_div", "ID1", "input", "scram", "challengeback", "settings", "timeselect","type3",
 			"or_instruct", "or_instruct2", "or_instruct4", "recent_solves_container", "keymap", "show_keyboard"
@@ -5963,6 +5978,7 @@ document.querySelectorAll('button').forEach(button => {
     });
 });
 function challengemode() {
+	modeData("challenge");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6418,6 +6434,7 @@ async function fadeInText(o, text, color = "red", el = "dnf", time = 600, fontSi
 }
 
 function suggestMode() {
+	modeData("suggest");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6468,6 +6485,7 @@ async function submitSuggestion() {
 
 document.getElementById("account").onclick = accountmode;
 function accountmode() {
+	modeData("accountmode");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6495,6 +6513,7 @@ function accountmode() {
 document.getElementById("login").onclick = loginmode;
 document.getElementById("l_link").onclick = () => MODE == "account" ? loginmode() : accountmode();
 function loginmode() {
+	modeData("loginmode");
 	if(MODE != "normal" && MODE != "cube" && MODE != "timed")
 	{
 		ao5 = [];
@@ -6626,6 +6645,7 @@ function speedmode()
 	INPUT.selected("Normal");
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
 	updateScores();
+	modeData("speed");
 }
 function movesmode()
 {
@@ -6671,6 +6691,7 @@ function movesmode()
 	mastep = 0;
 	INPUT.selected("Normal");
 	VOLUME.position(cnv_div.offsetWidth-(document.getElementById("settings").style.display == "none"? 60 : 130), 5);
+	modeData("moves");
 }
 function setSettings(obj) {
 	SPEED_SLIDER.value(obj.speed);
@@ -6825,7 +6846,10 @@ function updateScores() {
 			blind2x2 : "Blind 2x2", blind3x3: "Blind 3x3", marathon: "Shape Marathon", marathon2: "Bandage Marathon", marathon3: "Blind Marathon", race2x2: "2x2 Virtual Race",
 			race3x3: "3x3 Virtual Race", marathon4: "Cuboid Marathon", marathon5: "Baby Marathon", marathonglow: "Glow Marathon"};
 	Object.keys(display).forEach((mode) => {
-		const score  = localStorage[mode];
+		let score  = localStorage[mode];
+		if (score == "undefined") {
+			score = null;
+		}
 		if (mode.includes("bweek") && score && JSON.parse(score) != null && score != -1 && score != "null" && JSON.parse(score).score != "null" && JSON.parse(score).week == week) {
 			document.getElementById(mode + "score").innerHTML = display[mode] +  ": " + JSON.parse(score).score;
 		} else if (!mode.includes("bweek") && score != null && score != -1 && !(mode == "c_week" && localStorage.cdate != week)) {
@@ -7058,6 +7082,7 @@ function easy()
 		} else {
 			setScore(DIM == 50 ? "easy" : "easy2", total);
 		}
+		modeData("speedwin");
 		easystep = 0;
 		medstep = 0;
 		pllstep = 0;
@@ -7497,7 +7522,14 @@ async function saveData(username, password, method, al) {
 		keymappings: localStorage.keymappings,
 	};
 	console.log(data);
-	await repeatUntilSuccess(() => putUsers(data, method));
+	const response = await repeatUntilSuccess(() => putUsers(data, method));
+	if (response.error) {
+		alert("Invalid token, signing out");
+		getEl("logindesc").innerHTML = "";
+		signOut();
+		loginmode();
+		return;
+	}
 	successSQL("Data saved");
 	hideHighscoreModal();
 }
@@ -7521,11 +7553,21 @@ async function saveData(username, password, method, al) {
   }
 
 document.getElementById("loaddata").onclick = () => loadData(true);
-async function loadData(times) {
+async function loadData(times, userdata) {
 	if (document.getElementById("logindesc").innerHTML == "") {
 		document.getElementById("logindesc").innerHTML = "Loading data...";
 	}
-	const userdata = await repeatUntilSuccess(() => getUserData(localStorage.username));
+	if (!userdata) {
+		console.log("Self Load")
+		userdata = await repeatUntilSuccess(() => getUserData(localStorage.username));
+	}
+	if (userdata.error) {
+		alert("Invalid token, signing out");
+		signOut();
+		getEl("logindesc").innerHTML = "";
+		loginmode();
+		return;
+	}
 	if (!userdata) {
 		alert("Load failed, please try again");
 		document.getElementById("logindesc").innerHTML = "";
@@ -7555,10 +7597,14 @@ async function loadData(times) {
 	updateScores();
 	setSettings(userdata);
 }
-document.getElementById("signout").onclick = () => {
+document.getElementById("signout").onclick = signOut;
+
+function signOut(){
 	document.getElementById("l_message").innerHTML = "";
 	localStorage.username = "signedout";
-};
+	localStorage.token = "";
+}
+
 document.getElementById("l_submit").onclick = () => MODE == "account" ? submitAccount() : submitLogin();
 async function submitLogin() {
 	const username = document.getElementById("username").value;
@@ -7582,8 +7628,9 @@ async function submitLogin() {
 		loginmode();
 		document.getElementById("l_message").innerHTML = "Logged in successfully! Your settings and high scores have been updated.";
 		localStorage.username = username;
-	
-		loadData(true);
+		localStorage.token = response.token;
+		let userData = response.userData;
+		loadData(true, userData);
 	}
 }
 async function submitAccount() {
@@ -7635,6 +7682,7 @@ function speedRace(type){
 		${type == "physical" ? "You will be racing the bot using a <b>Physical</b> Rubik's cube." : ""}`;
 	setDisplay("block", ["r_sliders"]);
 	setDisplay("none", ["slider_div", "speed", "delaywhole"]);
+	modeData("race");
 	canMan = true;
 }
 function speedRace2(){
@@ -8728,6 +8776,8 @@ function shuffleCube(override = false) {
 		return;
 	}
 
+
+	modeData("scramble");
 	console.log("shuffling");
 	shufflespeed = 2;
 	moves = 0;
@@ -10427,6 +10477,7 @@ function solveCube()
 {
 	if(canMan == false)
 	return;
+	modeData("solvecube");
 	setLayout();
 	if(!isSolved())
 	{

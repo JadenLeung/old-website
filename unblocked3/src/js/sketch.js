@@ -27,9 +27,9 @@ if (!userId && window.crypto) {
 
   localStorage.userId = userId;
 }
-const socket = io("https://giraffe-bfa2c4acdpa4ahbr.canadacentral-01.azurewebsites.net/");
-// const socket = io("bruh");
+const socket = io("https://snake-efhkgffpc0gteee3.eastus-01.azurewebsites.net/");
 // const socket = io("http://localhost:3003", {auth: {userId}});
+// const socket = io("https://api.virtual-cube.net:3003/", {auth: {userId}});
 // let socket = null;
 
 
